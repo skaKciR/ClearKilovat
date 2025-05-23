@@ -1,14 +1,54 @@
 ﻿@page "/"
+@using ClearKilovat.Models.Entity
 @using Interfaces
+@using Models.DTO
+@using Radzen
+@using Radzen.Blazor
 @rendermode InteractiveServer
 @inject IJsonToPostgreLoader parser
+@inject IDbManagerService dbService
+
+<RadzenDataGrid Data="@accounts" TItem="Account"
+                AllowFiltering="true"
+                PageSize="10"
+                AllowPaging="true"
+                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive">
+    <Columns>
+        <RadzenDataGridColumn TItem="Account" Property="Address" Title="Адрес" Filterable="true" />
+
+        <RadzenDataGridColumn TItem="Account" Property="IsCommercial" Title="Тип объекта" Filterable="true">
+            <Template Context="account">
+                @if (account.IsCommercial)
+                {
+                    <span>Коммерческий</span>
+                }
+                else
+                {
+                    <span>Не коммерческий</span>
+                }
+            </Template>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
 
 
-<RadzenButton Click="ParseJsonToPostgre">Заполнить базу</RadzenButton>
 
+@code {
+    private List<AnalyzedAccountsDTO> accountsDTOs = [];
+    private List<Account> accounts = [];
 
-@code{
-    public void ParseJsonToPostgre(){
+    protected override void OnInitialized()
+    {
+        accounts = dbService.GetAccounts();
+        base.OnInitialized();
+    }
+
+    // private List<AnalyzedAccountsDTO> MapEnityToDto()
+    // {
+
+    // }
+    public void ParseJsonToPostgre()
+    {
         parser.ImportFromFileAsync();
     }
 }

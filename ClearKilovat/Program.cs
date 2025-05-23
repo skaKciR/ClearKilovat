@@ -20,6 +20,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddRadzenComponents();
 
 builder.Services.AddScoped<IJsonToPostgreLoader, JsonToPostgreLoader>();
+builder.Services.AddScoped<IDbManagerService, DbManagerService>();
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
