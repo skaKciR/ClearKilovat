@@ -1,1 +1,14 @@
 ﻿@page "/"
+@using Interfaces
+@rendermode InteractiveServer
+@inject IJsonToPostgreLoader parser
+
+
+<RadzenButton Click="ParseJsonToPostgre">Заполнить базу</RadzenButton>
+
+
+@code{
+    public void ParseJsonToPostgre(){
+        parser.ImportFromFileAsync();
+    }
+}
