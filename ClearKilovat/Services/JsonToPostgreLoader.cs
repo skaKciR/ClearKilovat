@@ -1,11 +1,12 @@
 ﻿using System.Text.Json;
 using ClearKilovat.DB;
+using ClearKilovat.Interfaces;
 using ClearKilovat.Models.Entity;
 using Microsoft.EntityFrameworkCore;
 
 namespace ClearKilovat.Services
 {
-    public class JsonToPostgreLoader
+    public class JsonToPostgreLoader : IJsonToPostgreLoader
     {
         private readonly PostgreDBContext _context;
 
@@ -14,8 +15,10 @@ namespace ClearKilovat.Services
             _context = context;
         }
 
-        public async Task ImportFromFileAsync(string filePath)
+        public async Task ImportFromFileAsync()
         {
+            string filePath = Path.Combine(AppContext.BaseDirectory, "JsonDataSet", "dataset_test.json");
+
             var json = await File.ReadAllTextAsync(filePath);
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
