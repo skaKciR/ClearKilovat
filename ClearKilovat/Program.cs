@@ -1,8 +1,17 @@
 using ClearKilovat.Components;
+using ClearKilovat.DB;
+using Microsoft.EntityFrameworkCore;
 using Radzen;
 
-var builder = WebApplication.CreateBuilder(args);
 
+var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+
+var builder = WebApplication.CreateBuilder(args);
+// Настроим контекст для подключения к базе данных
+builder.Services.AddDbContext<PostgreDBContext>(options =>
+{
+    options.UseNpgsql(connectionString);
+});
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
