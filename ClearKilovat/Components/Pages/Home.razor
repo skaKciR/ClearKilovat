@@ -8,7 +8,7 @@
 @inject IJsonToPostgreLoader parser
 @inject IDbManagerService dbService
 
-<RadzenDataGrid Data="@accounts" TItem="Account"
+<RadzenDataGrid Data="@_accounts" TItem="Account"
                 AllowFiltering="true"
                 PageSize="10"
                 AllowPaging="true"
@@ -28,6 +28,34 @@
                 }
             </Template>
         </RadzenDataGridColumn>
+
+        <RadzenDataGridColumn TItem="Account" Property="@nameof(Account.ParserAnalytics.DescriptionReason)" Title="Описание от Парсера" Filterable="true" />
+        <RadzenDataGridColumn TItem="Account" Property="@nameof(Account.ParserAnalytics.ParsedAt)" Title="Результат от Парсера" Filterable="true">
+            <Template Context="account">
+                @if (account.NnResult != null && account.NnResult.IsViolator)
+                {
+                    <span>Есть угроза</span>
+                }
+                else
+                {
+                    <span>Нет угрозы</span>
+                }
+            </Template>
+        </RadzenDataGridColumn>
+
+        <RadzenDataGridColumn TItem="Account" Property="@nameof(Account.NnResult.DescriptionReason.Length)" Title="Описание от нейросети" Filterable="true" />
+        <RadzenDataGridColumn TItem="Account" Property="@nameof(Account.NnResult.IsViolator)" Title="Результат от нейросети" Filterable="true">
+            <Template Context="account">
+                @if (account.NnResult != null && account.NnResult.IsViolator)
+                {
+                    <span>Есть угроза</span>
+                }
+                else{
+                    <span>Нет угрозы</span>
+                }
+            </Template>
+        </RadzenDataGridColumn>
+
     </Columns>
 </RadzenDataGrid>
 
@@ -35,11 +63,11 @@
 
 @code {
     private List<AnalyzedAccountsDTO> accountsDTOs = [];
-    private List<Account> accounts = [];
+    private List<Account> _accounts = [];
 
     protected override void OnInitialized()
     {
-        accounts = dbService.GetAccounts();
+        _accounts = dbService.GetAccounts();
         base.OnInitialized();
     }
 

@@ -11,5 +11,23 @@ namespace ClearKilovat.DB
         {
             
         }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            // Account → ParserAnalytics  (1-к-1)
+            modelBuilder.Entity<Account>()
+                .HasOne(a => a.ParserAnalytics)
+                .WithOne(p => p.Account)
+                .HasForeignKey<ParserAnalytics>(p => p.AccountId);
+
+            // Account → NnResult (1-к-1)
+            modelBuilder.Entity<Account>()
+                .HasOne(a => a.NnResult)
+                .WithOne(n => n.Account)
+                .HasForeignKey<NnResult>(n => n.AccountId);
+        }
+
     }
 }
