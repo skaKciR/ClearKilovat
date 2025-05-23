@@ -1,0 +1,29 @@
+﻿@page "/client-card"
+@rendermode InteractiveServer
+@using Radzen
+@using Radzen.Blazor
+
+
+
+
+<h3>ClientCartPage</h3>
+<RadzenStack Orientation="Orientation.Vertical" >
+    <RadzenCard Style="width: 100%; margin: auto; padding: 20px; background-color: #f3f8f3; border-radius:45px">
+        <h3 class="text-center" style="color: green; font-size:30px;">Карточка абонента</h3>
+        <div style="height: 2px; background-color: green; width: 280px; margin: 0 auto;"></div>
+
+        <RadzenLabel Text="AccountId" Style="display: block; margin: 20px  ; font-size:20px;" />
+        <RadzenLabel Text="Адрес" Style="display: block; margin: 20px ;font-size:20px;" />
+        <RadzenLabel Text="Не/является коммерческой" Style="display: block; margin: 20px ;font-size:20px;" />
+        <RadzenLabel Text="Тип здания:" Style="display: block; margin: 20px ;font-size:20px;" />
+        <RadzenLabel Text="Кол-во комнат:" Style="display: block; margin: 20px ;font-size:20px;" />
+        <RadzenLabel Text="Кол-во жильцов:" Style="display: block; margin: 20px ;font-size:20px;" />
+
+    </RadzenCard>
+    
+</RadzenStack>
+
+
+@code {
+
+}
