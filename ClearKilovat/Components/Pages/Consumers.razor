@@ -1,0 +1,25 @@
+﻿@page "/consumers"
+
+<RadzenDataGrid @ref="dataGrid" Data="@consumers" TItem="Consumer" AllowFiltering="true" AllowPaging="true" PageSize="10" FilterMode="FilterMode.Advanced" Class="data-grid-custom">
+    <Columns>
+        <RadzenDataGridColumn TItem="Consumer" Property="Name" Title="ФИО" />
+        <RadzenDataGridColumn TItem="Consumer" Property="Address" Title="Адрес" />
+    </Columns>
+</RadzenDataGrid>
+
+@code {
+    RadzenDataGrid<Consumer> dataGrid;
+
+    List<Consumer> consumers = new List<Consumer>
+    {
+        new Consumer { Name = "Иванов Иван Иванович", Address = "г. Москва, ул. Ленина, д. 1" },
+        new Consumer { Name = "Петрова Анна Сергеевна", Address = "г. Санкт-Петербург, пр. Невский, д. 2" },
+        new Consumer { Name = "Сидоров Петр Алексеевич", Address = "г. Екатеринбург, ул. Малышева, д. 3" },
+    };
+
+    class Consumer
+    {
+        public string Name { get; set; }
+        public string Address { get; set; }
+    }
+}

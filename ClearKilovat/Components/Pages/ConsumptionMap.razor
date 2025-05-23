@@ -1,0 +1,81 @@
+﻿@page "/map"
+@using Microsoft.JSInterop
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
+
+<PageTitle>Карта потребления</PageTitle>
+
+<div class="map-container">
+    <div id="spinner" class="spinner"></div>
+    <div id="map" class="map"></div>
+</div>
+
+<script src="https://api-maps.yandex.ru/2.1/?apikey=06ffe900-7f94-49ce-96fc-9c4f984eeaad&lang=ru_RU" type="text/javascript"></script>
+<script>
+    ymaps.ready(init);
+    function init() {
+        var myMap = new ymaps.Map("map", {
+            center: [45.0448, 38.976],
+            zoom: 10
+        }, {
+            searchControlProvider: 'yandex#search'
+        });
+
+        // Зона 1 (полигон)
+        var polygon = new ymaps.Polygon([
+            [
+                [45.05, 38.95],
+                [45.05, 39.00],
+                [45.00, 39.00],
+                [45.00, 38.95],
+                [45.05, 38.95]
+            ]
+        ], {
+            hintContent: "Зона 1",
+            balloonContent: "Это зона 1 с высоким потреблением"
+        }, {
+            fillColor: '#FF000055',
+            strokeColor: '#FF0000',
+            strokeWidth: 2,
+            fillOpacity: 0.4
+        });
+
+        // Зона 2 (круг)
+        var circle = new ymaps.Circle([
+            [45.1, 39.0],
+            5000
+        ], {
+            hintContent: "Зона 2",
+            balloonContent: "Это круговая зона 2"
+        }, {
+            fillColor: '#0000FF55',
+            strokeColor: '#0000FF',
+            strokeWidth: 2,
+            fillOpacity: 0.3
+        });
+
+        // Пример списка домов с координатами
+        var houses = [
+            { coords: [45.04, 38.97], name: "Дом Владоса", description: "Потребление: 100 кВт" },
+            { coords: [45.03, 38.98], name: "Дом Лехи", description: "Потребление: 150 кВт" }
+        ];
+
+        // Добавление маркеров для каждого дома
+        houses.forEach(function(house) {
+            var placemark = new ymaps.Placemark(house.coords, {
+                hintContent: house.name,
+                balloonContent: `<strong>${house.name}</strong><br>${house.description}`
+            }, {
+                preset: 'islands#blueHomeIcon', // Иконка дома
+                iconColor: '#0095b6' // Цвет иконки
+            });
+            myMap.geoObjects.add(placemark);
+        });
+
+        myMap.geoObjects.add(polygon);
+        myMap.geoObjects.add(circle);
+
+        // Скрыть спиннер после загрузки карты
+        document.getElementById('spinner').style.display = 'none';
+    }
+</script>
