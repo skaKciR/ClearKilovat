@@ -1,5 +1,7 @@
 using ClearKilovat.Components;
 using ClearKilovat.DB;
+using ClearKilovat.Interfaces;
+using ClearKilovat.Services;
 using Microsoft.EntityFrameworkCore;
 using Radzen;
 
@@ -17,6 +19,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddRadzenComponents();
 
+builder.Services.AddScoped<IJsonToPostgreLoader, JsonToPostgreLoader>();
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
