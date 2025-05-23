@@ -1,29 +1,76 @@
 ﻿@page "/client-card"
 @rendermode InteractiveServer
+@using ClearKilovat.Models.Entity
+@using Microsoft.EntityFrameworkCore
 @using Radzen
 @using Radzen.Blazor
-
+@using ClearKilovat.DB
 
 
 
 <h3>ClientCartPage</h3>
-<RadzenStack Orientation="Orientation.Vertical" >
+<RadzenStack Orientation="Orientation.Vertical">
     <RadzenCard Style="width: 100%; margin: auto; padding: 20px; background-color: #f3f8f3; border-radius:45px">
         <h3 class="text-center" style="color: green; font-size:30px;">Карточка абонента</h3>
         <div style="height: 2px; background-color: green; width: 280px; margin: 0 auto;"></div>
 
-        <RadzenLabel Text="AccountId" Style="display: block; margin: 20px  ; font-size:20px;" />
-        <RadzenLabel Text="Адрес" Style="display: block; margin: 20px ;font-size:20px;" />
-        <RadzenLabel Text="Не/является коммерческой" Style="display: block; margin: 20px ;font-size:20px;" />
-        <RadzenLabel Text="Тип здания:" Style="display: block; margin: 20px ;font-size:20px;" />
-        <RadzenLabel Text="Кол-во комнат:" Style="display: block; margin: 20px ;font-size:20px;" />
-        <RadzenLabel Text="Кол-во жильцов:" Style="display: block; margin: 20px ;font-size:20px;" />
+        <RadzenLabel Text="Account ID:" Style="font-size:20px; margin-top:20px;" />
+        <RadzenLabel Text=@(account.Id.ToString()) Style="font-size:20px; font-weight:bold;" />
 
+        <RadzenLabel Text="Адрес:" Style="font-size:20px; margin-top:20px;" />
+        <RadzenLabel Text=@(account.Address) Style="font-size:20px; font-weight:bold;" />
+
+        <RadzenLabel Text="Коммерческий:" Style="font-size:20px; margin-top:20px;" />
+        <RadzenLabel Text=@(account.IsCommercial ? "Да" : "Нет") Style="font-size:20px; font-weight:bold;" />
+
+        <RadzenLabel Text="Тип здания:" Style="font-size:20px; margin-top:20px;" />
+        <RadzenLabel Text=@(account.BuildingType ?? "—") Style="font-size:20px; font-weight:bold;" />
+
+        <RadzenLabel Text="Кол-во комнат:" Style="font-size:20px; margin-top:20px;" />
+        <RadzenLabel Text=@(account.RoomsCount?.ToString() ?? "—") Style="font-size:20px; font-weight:bold;" />
+
+        <RadzenLabel Text="Кол-во жильцов:" Style="font-size:20px; margin-top:20px;" />
+        <RadzenLabel Text=@(account.ResidentsCount?.ToString() ?? "—") Style="font-size:20px; font-weight:bold;" />
+
+        <RadzenDataGrid @ref="myGrid" Data="@_consumptions" TItem="Consumption" Class="mt-2" ShowPagingSummary="false" PageSize="12" ShowPaging="false" Style="margin-top: 10px;">
+            <Columns>
+                <RadzenDataGridColumn TItem="Consumption" Property="Month" Title="Месяц">
+                    <Template Context="Consumption">
+                        @Consumption.Month
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="Consumption" Property="Value" Title="Киловатт">
+                    <Template Context="Consumption">
+                        @Consumption.Value
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
     </RadzenCard>
-    
+
 </RadzenStack>
 
 
 @code {
+    [Parameter]
+    public int AccountId { get; set; }
 
+    RadzenDataGrid<Consumption> myGrid;
+    Account account = new();
+    List<Consumption> _consumptions = new();
+    private readonly PostgreDBContext _context;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Загружаем аккаунт вместе с потреблениями
+        account = await _context.Accounts
+                                 .Include(a => a.Consumptions)
+                                 .FirstOrDefaultAsync(a => a.Id == AccountId)
+                   ?? new Account();
+
+        // Если вы хотите только последние N записей или сортировать:
+        _consumptions = account.Consumptions
+                               .OrderByDescending(c => c.Month)
+                               .ToList();
+    }
 }
