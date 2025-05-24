@@ -6,7 +6,7 @@
 @inject IDbService dbService
 
 <PageTitle>Список потребителей</PageTitle>
-<RadzenDataGrid Data="@clients" TItem="Account" AllowSorting="true" AllowFiltering="true" AllowPaging="true" PageSize="10" Style="border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: linear-gradient(145deg, #ffffff, #f8f9fa);">
+<RadzenDataGrid Data="@clients" TItem="Account" AllowSorting="true" AllowFiltering="true" AllowPaging="true" PageSize="13" Style="border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: linear-gradient(145deg, #ffffff, #f8f9fa);">
     <Columns>
         <RadzenDataGridColumn TItem="Account" Property="Id" Title="ID" Width="80px">
             <HeaderTemplate>
