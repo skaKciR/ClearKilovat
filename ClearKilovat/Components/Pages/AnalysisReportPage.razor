@@ -19,24 +19,22 @@
         </div>
         <div style="height:3px; background:linear-gradient(to right, #2ecc71, #27ae60); width:100%; max-width:500px; margin:0 auto 25px; border-radius:2px;"></div>
 
-        <RadzenChart Style="margin-bottom:40px;">
-            <RadzenPieSeries Data="@PieChartData" CategoryProperty="Label" ValueProperty="Value" Title="Категории по вероятности"  />
+        <RadzenChart Style="margin-bottom:40px;"  >
+            <RadzenPieSeries Data="@PieChartData" CategoryProperty="Label" ValueProperty="Value" Title="Категории по вероятности" Fills="@colorScheme" />
         </RadzenChart>
 
-        <RadzenChart Style="margin-bottom:40px;">
-            <RadzenColumnSeries Data="@BarChartData" CategoryProperty="Label" ValueProperty="Value" Title="Потребление по месяцам"  Fill="green" />
+        <RadzenChart Style="margin-bottom:40px;" ColorScheme="ColorScheme.Divergent" >
+            <RadzenColumnSeries Data="@BarChartData" CategoryProperty="Label" ValueProperty="Value" Title="Потребление по месяцам" Fill="#16A085" />
             <RadzenCategoryAxis />
             <RadzenValueAxis />
         </RadzenChart>
 
-        <!-- Остальной код анализа аккаунта -->
-        <!-- ... оставляем без изменений ... -->
     </RadzenCard>
 </RadzenStack>
 
 @code {
     private class ChartItem { public string Label { get; set; } = string.Empty; public double Value { get; set; } }
-
+    public List<string> colorScheme = new() { "#f74d4d", "#F1C40F", "#27AE60" };
     private List<ChartItem> PieChartData = new();
     private List<ChartItem> BarChartData = new();
 
@@ -53,6 +51,8 @@
         // Новая PieChart: категории по вероятности из description_reason
         var allResults = await DbContext.NNResults.ToListAsync();
         int over60 = 0, from50to60 = 0, below50 = 0;
+
+        
 
         foreach (var res in allResults)
         {
@@ -74,19 +74,28 @@
 
         PieChartData = new List<ChartItem>
         {
-            new ChartItem { Label = "> 60%", Value = over60 },
-            new ChartItem { Label = "50–60%", Value = from50to60 },
-            new ChartItem { Label = "< 50%", Value = below50 }
+            new ChartItem { Label = "Коммерческая", Value = over60 },
+            new ChartItem { Label = "Подозрение", Value = from50to60 },
+            new ChartItem { Label = "Не коммерческая", Value = below50 }
         };
 
-        // BarChart: группировка потребления по месяцам
+
         BarChartData = (await DbContext.Consumptions
             .GroupBy(c => c.Month)
-            .Select(g => new { Month = g.Key, Sum = g.Sum(c => (double)c.Value) })
+            .Select(g => new
+            {
+                Month = g.Key,
+                Avg = g.Average(c => (double)c.Value)
+            })
             .ToListAsync())
             .OrderBy(x => x.Month)
-            .Select(x => new ChartItem { Label = x.Month.ToString(), Value = x.Sum })
+            .Select(x => new ChartItem
+                {
+                    Label = x.Month.ToString(),
+                    Value = Math.Round(x.Avg, 2)
+                })
             .ToList();
+
     }
 
     private bool isLoading;
