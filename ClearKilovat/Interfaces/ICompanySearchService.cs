@@ -1,5 +1,5 @@
-﻿using ClearKilovat.Models.Parser;
-using static ClearKilovat.Components.Pages.Home;
+﻿using ClearKilovat.Models.Entity;
+using ClearKilovat.Models.Parser;
 
 namespace ClearKilovat.Interfaces
 {

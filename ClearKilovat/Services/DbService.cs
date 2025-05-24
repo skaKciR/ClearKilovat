@@ -16,6 +16,21 @@ namespace ClearKilovat.Services
         }
 
         public List<Account> GetAccounts() => _context.Accounts.ToList();
+        public List<Company> GetCompanies() => _context.Companies.ToList();
+
+        public async Task InsertCompanies(List<Company> companies)
+        {
+            try
+            {
+                _context.Companies.AddRange(companies);
+                _context.SaveChanges();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Не удалось вставить компании в БД. {ex.Message}");
+            }
+        }
+
         public async Task<List<Account>> GetAccountErrors() => await _context.Accounts.ToListAsync();
 
         public List<SmartMeterReading> GetSmartMetersReadings() => _context.SmartMeterReadings
@@ -70,16 +85,33 @@ namespace ClearKilovat.Services
             await _context.SaveChangesAsync();
         }
 
-    private class AccountRaw
-    {
-        public int accountId { get; set; }
-        public bool isCommercial { get; set; }
-        public string address { get; set; }
-        public string buildingType { get; set; }
-        public int? roomsCount { get; set; }
-        public int? residentsCount { get; set; }
-        public decimal? totalArea { get; set; }
-        public Dictionary<string, int> consumption { get; set; }
-    }
+        public List<ParserAnalytics> GetParserAnalytics() => _context.ParserAnalytics.ToList();
+
+        public async Task AddAnalyticToDb(ParserAnalytics parsedAnalytic)
+        {
+            try
+            {
+                _context.ParserAnalytics.Add(parsedAnalytic);
+                _context.SaveChanges();
+                Console.WriteLine($"Успешно сохранили {parsedAnalytic.AccountId} в базу");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Ошибка при попытке добавить parsedAnalytic в базу");
+            }
+        }
+
+
+        private class AccountRaw
+        {
+            public int accountId { get; set; }
+            public bool isCommercial { get; set; }
+            public string address { get; set; }
+            public string buildingType { get; set; }
+            public int? roomsCount { get; set; }
+            public int? residentsCount { get; set; }
+            public decimal? totalArea { get; set; }
+            public Dictionary<string, int> consumption { get; set; }
+        }
     }
 }

@@ -1,6 +1,7 @@
 ﻿@page "/client-card/{AccountId:int}"
 @rendermode InteractiveServer
 @inject ICompanySearchService companySearchService
+@inject IDbService dbService
 
 @using ClearKilovat.Interfaces
 @using ClearKilovat.Models.Entity
@@ -85,10 +86,14 @@
     public int AccountId { get; set; }
 
     RadzenDataGrid<Consumption> myGrid;
+
     Account account = new();
 
     private IdPurposeDTO resultGettingInfo = new();
+
+    private List<ParserAnalytics> parserAnalytics;
     private List<Company> companies = new();
+    private List<Company> allCompanies = new();
 
     private bool isPurposeCommercial = false;
 
@@ -98,15 +103,42 @@
             .Include(a => a.Consumptions)
             .FirstOrDefaultAsync(a => a.Id == AccountId)
             ?? new Account();
-        resultGettingInfo = await companySearchService.GetBuildingId(account.Address);
 
-        string purposeName = resultGettingInfo.PurposeName;
-        isPurposeCommercial = companySearchService.IsCommercialBuilding(purposeName);
+        allCompanies = dbService.GetCompanies();
+        parserAnalytics = dbService.GetParserAnalytics();
 
-        if (!string.IsNullOrEmpty(purposeName) && isPurposeCommercial)
+        if (!parserAnalytics.Any(x => x.AccountId == account.Id))
         {
-            string buildingId = resultGettingInfo.Id;
-            companies = await companySearchService.GetCompaniesInBuilding(buildingId);
+            ParserAnalytics newAnalytic = new()
+                {
+                    AccountId = account.Id
+                };
+
+            resultGettingInfo = await companySearchService.GetBuildingId(account.Address);
+
+            string purposeName = resultGettingInfo.PurposeName;
+            isPurposeCommercial = companySearchService.IsCommercialBuilding(purposeName);
+
+            newAnalytic.DescriptionReason = purposeName;
+            newAnalytic.IsViolator = isPurposeCommercial;
+
+            await dbService.AddAnalyticToDb(newAnalytic);
+
+            if (!string.IsNullOrEmpty(purposeName) && isPurposeCommercial)
+            {
+                string buildingId = resultGettingInfo.Id;
+                companies = await companySearchService.GetCompaniesInBuilding(buildingId);
+                foreach (var company in companies)
+                {
+                    company.AccountId = account.Id;
+                }
+                await dbService.InsertCompanies(companies);
+            }
+        }
+        else
+        {
+            companies = allCompanies.Where(x => x.AccountId == account.Id).ToList();
+            isPurposeCommercial = parserAnalytics.FirstOrDefault(x => x.AccountId == account.Id).IsViolator;
         }
     }
 }

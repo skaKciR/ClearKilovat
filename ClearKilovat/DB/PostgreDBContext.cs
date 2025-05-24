@@ -11,6 +11,7 @@ namespace ClearKilovat.DB
         public DbSet<ParserAnalytics> ParserAnalytics { get; set; }
         public DbSet<SmartMeter> SmartMeters { get; set; }
         public DbSet<SmartMeterReading> SmartMeterReadings { get; set; }
+        public DbSet<Company> Companies { get; set; }
 
 
         public PostgreDBContext(DbContextOptions<PostgreDBContext> options) : base(options)

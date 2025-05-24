@@ -6,7 +6,10 @@ namespace ClearKilovat.Interfaces
     {
         public Task ImportFromFileAsync();
         public List<Account> GetAccounts();
-
+        public List<Company> GetCompanies();
+        public Task InsertCompanies(List<Company> companies);   
         public Task<List<Account>> GetAccountErrors();
+        public List<ParserAnalytics> GetParserAnalytics();
+        public Task AddAnalyticToDb(ParserAnalytics parsedAnalytic);
     }
 }

@@ -1,4 +1,5 @@
 ﻿using ClearKilovat.Interfaces;
+using ClearKilovat.Models.Entity;
 using ClearKilovat.Models.Parser;
 using Newtonsoft.Json.Linq;
 
@@ -68,7 +69,7 @@ namespace ClearKilovat.Services
                 companiesList.Add(new Company
                 {
                     Name = item["name"]?.ToString() ?? "Без названия",
-                    Address = item["address_name"]?.ToString() ?? string.Empty
+                    Adress = item["address_name"]?.ToString() ?? string.Empty
                 });
             }
 
