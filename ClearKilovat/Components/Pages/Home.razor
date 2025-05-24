@@ -1,128 +1,72 @@
 ﻿@page "/"
-@using ClearKilovat.Interfaces
-@using ClearKilovat.Models.Parser
+@using ClearKilovat.Models.Entity
+@using Interfaces
+@using Models.DTO
+@using Radzen
+@using Radzen.Blazor
 @rendermode InteractiveServer
-@inject ICompanySearchService companySearchService
 @inject IDbService dbService
 
-@* <div class="container">
-    <h1>Компании в здании</h1>
+<RadzenDataGrid Data="@_accounts" TItem="Account"
+                AllowFiltering="true"
+                PageSize="10"
+                AllowPaging="true"
+                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive">
+    <Columns>
+        <RadzenDataGridColumn TItem="Account" Property="Address" Title="Адрес" Filterable="true" />
 
-    <div class="form-group">
-        <label for="addressInput">Адрес:</label>
-        <input id="addressInput"
-               class="form-control"
-               @bind="address"
-               placeholder="Введите адрес, например: Москва Доватора, 6/6 к8" />
-    </div>
+        <RadzenDataGridColumn TItem="Account" Property="IsCommercial" Title="Тип объекта" Filterable="true">
+            <Template Context="account">
+                @if (account.IsCommercial)
+                {
+                    <span>Коммерческий</span>
+                }
+                else
+                {
+                    <span>Не коммерческий</span>
+                }
+            </Template>
+        </RadzenDataGridColumn>
 
-    <button class="btn btn-primary mt-2"
-            @onclick="ParseAddress"
-            disabled="@isLoading">
-        @if (isLoading)
-        {
-            <span>Загрузка...</span>
-        }
-        else
-        {
-            <span>Найти компании</span>
-        }
-    </button>
+        <RadzenDataGridColumn TItem="Account" Property="@nameof(Account.ParserAnalytics.DescriptionReason)" Title="Описание от Парсера" Filterable="true" />
+        <RadzenDataGridColumn TItem="Account" Property="@nameof(Account.ParserAnalytics.ParsedAt)" Title="Результат от Парсера" Filterable="true">
+            <Template Context="account">
+                @if (account.NnResult != null && account.NnResult.IsViolator)
+                {
+                    <span>Есть угроза</span>
+                }
+                else
+                {
+                    <span>Нет угрозы</span>
+                }
+            </Template>
+        </RadzenDataGridColumn>
 
-    <div class="mt-3">
-        @if (isLoading)
-        {
-            <div class="alert alert-info">
-                <p>Загрузка данных... @progressMessage</p>
-            </div>
-        }
-        else if (!string.IsNullOrEmpty(errorMessage))
-        {
-            <div class="alert alert-info">
-                <p>@errorMessage</p>
-            </div>
-        }
-        else
-        {
-            @if (!string.IsNullOrEmpty(purposeName) && IsCommercialBuilding())
-            {
-                <div class="alert alert-success">
-                    <p>Это коммерческое здание: @purposeName</p>
-                </div>
-            }
-            @if (companies.Any())
-            {
-                <h3>Компании в здании по адресу: @address</h3>
-                <div class="list-group">
-                    @foreach (var company in companies)
-                    {
-                        <div class="list-group-item">
-                            <h5>@company.Name</h5>
-                            <p>Адрес: @company.Address</p>
-                        </div>
-                    }
-                </div>
-            }
-            else
-            {
-                <div class="alert alert-warning">
-                    <p>Компании не найдены</p>
-                </div>
-            }
-        }
-    </div>
-</div>
+        <RadzenDataGridColumn TItem="Account" Property="@nameof(Account.NnResult.DescriptionReason.Length)" Title="Описание от нейросети" Filterable="true" />
+        <RadzenDataGridColumn TItem="Account" Property="@nameof(Account.NnResult.IsViolator)" Title="Результат от нейросети" Filterable="true">
+            <Template Context="account">
+                @if (account.NnResult != null && account.NnResult.IsViolator)
+                {
+                    <span>Есть угроза</span>
+                }
+                else{
+                    <span>Нет угрозы</span>
+                }
+            </Template>
+        </RadzenDataGridColumn>
+
+    </Columns>
+</RadzenDataGrid>
+
+
 
 @code {
-    private string address = "Москва Доватора, 6/6 к8";
-    private string buildingId = string.Empty;
-    private string purposeName = string.Empty;
-    private List<Company> companies = new List<Company>();
-    private bool isLoading = false;
-    private string errorMessage = string.Empty;
-    private string progressMessage = string.Empty;
+    private List<AnalyzedAccountsDTO> accountsDTOs = [];
+    private List<Account> _accounts = [];
 
-    private async Task ParseAddress()
+    protected override void OnInitialized()
     {
-        await GetCompanies();
+        _accounts = dbService.GetAccounts();
+        base.OnInitialized();
     }
-
-    private async Task GetCompanies()
-    {
-        try
-        {
-            isLoading = true;
-            errorMessage = string.Empty;
-            progressMessage = string.Empty;
-            companies.Clear();
-            purposeName = string.Empty;
-
-            buildingId = await companySearchService.GetBuildingId(address);
-            if (string.IsNullOrEmpty(buildingId))
-            {
-                errorMessage = "Не удалось найти здание по указанному адресу";
-                return;
-            }
-
-            companies = await companySearchService.GetCompaniesInBuilding(buildingId);
-        }
-        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
-        {
-            errorMessage = "Превышен лимит запросов к API 2GIS. Попробуйте позже.";
-        }   
-        catch (Exception ex)
-        {
-            errorMessage = $"Ошибка: {ex.Message}";
-        }
-        finally
-        {
-            isLoading = false;
-            StateHasChanged();
-        }
-    }
-
-    private bool IsCommercialBuilding()
-    {
-        return companySearchService.IsCommercialBuilding(purposeName);
-    } *@
-@* } *@
+}

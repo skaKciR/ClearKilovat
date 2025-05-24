@@ -30,5 +30,8 @@ namespace ClearKilovat.Models.Entity
         public decimal? TotalArea { get; set; }
 
         public List<Consumption> Consumptions { get; set; }
+        public ParserAnalytics? ParserAnalytics { get; set; }
+        public NnResult? NnResult { get; set; }
+
     }
 }
