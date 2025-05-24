@@ -2,20 +2,22 @@
 @rendermode InteractiveServer
 @inject ICompanySearchService companySearchService
 @inject IDbService dbService
+@inject IJSRuntime JSRuntime
+@inject IHttpClientFactory HttpClientFactory
+@inject PostgreDBContext DbContext
 
 @using ClearKilovat.Interfaces
 @using ClearKilovat.Models.Entity
 @using Microsoft.EntityFrameworkCore
-
 @using Radzen
 @using Radzen.Blazor
 @using ClearKilovat.DB
 @using ClearKilovat.Models.Parser
 @using System.Text
 @using System.Text.Json
-@inject IHttpClientFactory HttpClientFactory
-@inject PostgreDBContext DbContext
-
+@using QuestPDF.Fluent;
+@using QuestPDF.Helpers;
+@using QuestPDF.Infrastructure;
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
@@ -86,7 +88,7 @@
                     <RadzenLabel Text="@(predictionProbability ?? "Недоступно")" Style="font-size:16px; color:#2c3e50;" />
                 </RadzenStack>
             </RadzenStack>
-            <RadzenButton Style="width:60px; height:60px; border-radius:50%; background:linear-gradient(145deg, #2ecc71, #27ae60);
+            <RadzenButton Click="@GeneratePdf" Style="width:60px; height:60px; border-radius:50%; background:linear-gradient(145deg, #2ecc71, #27ae60);
                 border:none; margin:20px auto 0; display:flex; align-items:center; justify-content:center;
                 box-shadow: 0 2px 8px rgba(0,0,0,0.2); transition: transform 0.3s;">
                 <i class="fas fa-download fa-2x" style="color:white;"></i>
@@ -105,15 +107,7 @@
     private List<Company> companies = new();
     private List<Company> allCompanies = new();
     private bool isPurposeCommercial = false;
-
-    /// <summary>
-    /// Вероятность причастия к комерческому
-    /// </summary>
     private string? predictionProbability = null;
-
-    /// <summary>
-    /// Коммерческое/не коммерческое
-    /// </summary>
     private bool isPredictionCommercial = false;
 
     protected override async Task OnInitializedAsync()
@@ -160,16 +154,13 @@
             isPurposeCommercial = parserAnalytics.FirstOrDefault(x => x.AccountId == account.Id)?.IsViolator ?? false;
         }
 
-        
         await LoadPredictionAsync();
     }
 
-   
     private async Task LoadPredictionAsync()
     {
         try
         {
-            
             var existingPrediction = await DbContext.NNResults
                 .Where(n => n.AccountId == AccountId)
                 .Select(n => new { n.DescriptionReason, n.IsViolator })
@@ -177,14 +168,12 @@
 
             if (existingPrediction != null)
             {
-               
                 predictionProbability = existingPrediction.DescriptionReason;
                 isPredictionCommercial = existingPrediction.IsViolator;
                 Console.WriteLine($"[SubscriberCard] Использовано кэшированное предсказание для AccountId={AccountId}: {predictionProbability}, IsViolator={isPredictionCommercial}");
                 return;
             }
 
-         
             var record = new Dictionary<string, object>
             {
                 { "accountId", account.Id },
@@ -230,16 +219,15 @@
                     predictionProbability = descProp.GetString() ?? "Нет данных";
                     isPredictionCommercial = violatorProp.GetBoolean();
 
-                   
                     var nnResult = new NnResult
                         {
                             AccountId = AccountId,
                             DescriptionReason = predictionProbability,
                             IsViolator = isPredictionCommercial,
                             PredictedAt = prediction.TryGetValue("predicted_at", out var predictedAtProp) &&
-                                          DateTimeOffset.TryParse(predictedAtProp.GetString(), out var dateTimeOffset)
-                                          ? dateTimeOffset.UtcDateTime
-                                          : DateTime.Now
+                                                      DateTimeOffset.TryParse(predictedAtProp.GetString(), out var dateTimeOffset)
+                                                      ? dateTimeOffset.UtcDateTime
+                                                      : DateTime.Now
                         };
 
                     DbContext.NNResults.Add(nnResult);
@@ -266,8 +254,133 @@
             isPredictionCommercial = false;
         }
     }
-}
 
+    private async Task GeneratePdf()
+    {
+        // Настройка лицензии QuestPDF
+        QuestPDF.Settings.License = LicenseType.Community;
+
+        // Создаем PDF-документ
+        var document = Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4);
+                page.Margin(2, Unit.Centimetre);
+                page.DefaultTextStyle(x => x.FontSize(12).FontFamily(Fonts.Calibri));
+                page.Background().Background(QuestPDF.Helpers.Colors.Grey.Lighten4);
+
+                // Заголовок
+                page.Header()
+                    .PaddingBottom(10)
+                    .BorderBottom(1, Unit.Point)
+                    .Text("Карточка абонента")
+                    .SemiBold()
+                    .FontSize(24)
+                    .FontColor(QuestPDF.Helpers.Colors.Green.Darken2)
+                    .AlignCenter();
+
+                // Контент
+                page.Content()
+                    .PaddingVertical(1, Unit.Centimetre)
+                    .Table(table =>
+                    {
+                        // Определяем структуру таблицы: 2 столбца (метка и значение)
+                        table.ColumnsDefinition(columns =>
+                        {
+                            columns.ConstantColumn(180); // Фиксированная ширина для меток
+                            columns.RelativeColumn();   // Остальное пространство для значений
+                        });
+
+                        // Стили для ячеек заголовка
+                        table.Header(header =>
+                        {
+                            header.Cell().Background(QuestPDF.Helpers.Colors.Green.Lighten2).Padding(5).Text("Параметр").Bold().FontColor(QuestPDF.Helpers.Colors.White);
+                            header.Cell().Background(QuestPDF.Helpers.Colors.Green.Lighten2).Padding(5).Text("Значение").Bold().FontColor(QuestPDF.Helpers.Colors.White);
+                        });
+
+                        // Счетчик для чередования фона строк
+                        int rowIndex = 0;
+
+                        // Функция для добавления строки с иконкой
+                        void AddRow(string label, string value, string icon = "•")
+                        {
+                            var backgroundColor = rowIndex % 2 == 0 ? QuestPDF.Helpers.Colors.White : QuestPDF.Helpers.Colors.Grey.Lighten5;
+
+                            table.Cell()
+                                .Border(0.5f)
+                                .Background(backgroundColor)
+                                .Padding(8)
+                                .Row(row =>
+                                {
+                                    row.ConstantItem(20).Text(icon).FontSize(10).FontColor(QuestPDF.Helpers.Colors.Green.Medium);
+                                    row.AutoItem().Text(label).Bold();
+                                });
+
+                            table.Cell()
+                                .Border(0.5f)
+                                .Background(backgroundColor)
+                                .Padding(8)
+                                .Text(value);
+
+                            rowIndex++;
+                        }
+
+                        AddRow("Account ID:", account.Id.ToString(), "🆔");
+                        AddRow("Адрес:", account.Address, "🏠");
+                        AddRow("Тип здания:", account.BuildingType ?? "—", "🏢");
+                        AddRow("Кол-во комнат:", account.RoomsCount?.ToString() ?? "—", "🛋️");
+                        AddRow("Кол-во жильцов:", account.ResidentsCount?.ToString() ?? "—", "👥");
+                        AddRow("Тип объекта с 2gis:", isPurposeCommercial ? "Коммерческий" : "Жилой", "📍");
+                        AddRow("Нейро-предсказание:", isPredictionCommercial ? "Коммерческий" : "Жилой", "🧠");
+                        AddRow("Вероятность:", predictionProbability ?? "Недоступно", "📊");
+
+                        // Добавляем компании, если они есть
+                        if (isPurposeCommercial && companies.Any())
+                        {
+                            table.Cell()
+                                .ColumnSpan(2)
+                                .PaddingTop(10)
+                                .Text("Компании в здании:")
+                                .Bold()
+                                .FontColor(QuestPDF.Helpers.Colors.Green.Darken2);
+
+                            foreach (var company in companies)
+                            {
+                                var backgroundColor = rowIndex % 2 == 0 ? QuestPDF.Helpers.Colors.White : QuestPDF.Helpers.Colors.Grey.Lighten5;
+                                table.Cell()
+                                    .ColumnSpan(2)
+                                    .Border(0.5f)
+                                    .Background(backgroundColor)
+                                    .Padding(8)
+                                    .Text($"🏬 {company.Name}");
+                                rowIndex++;
+                            }
+                        }
+                    });
+
+                // Футер
+                page.Footer()
+    .AlignCenter()
+    .Text(x =>
+    {
+        x.Span("Страница ").FontSize(10).FontColor(QuestPDF.Helpers.Colors.Grey.Medium);
+        x.CurrentPageNumber().FontSize(10).FontColor(QuestPDF.Helpers.Colors.Grey.Medium).Bold();
+        x.Span(" из ").FontSize(10).FontColor(QuestPDF.Helpers.Colors.Grey.Medium);
+        x.TotalPages().FontSize(10).FontColor(QuestPDF.Helpers.Colors.Grey.Medium).Bold();
+    });
+            });
+        });
+
+        using var stream = new MemoryStream();
+        document.GeneratePdf(stream);
+
+        var fileName = $"ОтчётПо{AccountId}.pdf";
+        var fileContent = stream.ToArray();
+        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/pdf", Convert.ToBase64String(fileContent));
+    }
+}
+<script src="/_content/pdf.js"></script>
 <style>
     .rz-button-md .rzi {
         font-size: 24px !important;

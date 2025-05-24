@@ -42,7 +42,7 @@
         </RadzenDataGridColumn>
         <RadzenDataGridColumn TItem="Account"
                               Property="@nameof(Account.ParserAnalytics.IsViolator)"
-                              Title="Оценка парсера" Width="120px">
+                              Title="Оценка парсера" Width="80px">
             <HeaderTemplate>
                 <i class="fas fa-line-chart  fa-sm" style="color:#34495e; margin-right: 5px;"></i>
                 Оценка парсера
@@ -56,7 +56,7 @@
                 </span>
             </Template>
         </RadzenDataGridColumn>
-        <RadzenDataGridColumn TItem="Account" Property="@nameof(Account.ParserAnalytics.DescriptionReason)" Title="Выводы парсера" Width="120px">
+        <RadzenDataGridColumn TItem="Account" Property="@nameof(Account.ParserAnalytics.DescriptionReason)" Title="Выводы парсера" Width="80px">
             <HeaderTemplate>
                 <i class="fas fa-area-chart  fa-sm" style="color:#34495e; margin-right: 5px;"></i>Выводы парсера
             </HeaderTemplate>
@@ -68,7 +68,7 @@
         </RadzenDataGridColumn>
         <RadzenDataGridColumn TItem="Account"
                               Property="@nameof(Account.NnResult.IsViolator)"
-                              Title="Результат ИИ" Width="150px">
+                              Title="Результат ИИ" Width="60px">
             <HeaderTemplate>
                 <i class="fas fa-line-chart fa-sm" style="color:#34495e; margin-right: 5px;"></i>
                 Результат ML
