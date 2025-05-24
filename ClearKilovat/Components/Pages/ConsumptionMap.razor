@@ -13,7 +13,7 @@
     <div id="map" class="map"></div>
 </div>
 
-<script src="https://api-maps.yandex.ru/2.1/?apikey=06ffe900-7f94-49ce-96fc-9c4f984eeaad&lang=ru_RU" type="text/javascript"></script>
+<script src="https://api-maps.yandex.ru/2.1/?apikey=f2099483-86bd-420f-aea6-5df434b970f5&lang=ru_RU" type="text/javascript"></script>
 <script>
     ymaps.ready(init);
     function init() {
@@ -91,7 +91,7 @@
             var accounts = clients.Select(c => new
             {
                 address = c.Address,
-                consumption = c.Consumptions?.Sum(co => co.Value) ?? 0 // Предполагается, что у Consumption есть поле Value
+                consumption = c.Consumptions?.Sum(co => co.Value) ?? 0 
             }).ToList();
 
             // Передача данных в JavaScript

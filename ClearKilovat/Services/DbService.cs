@@ -17,13 +17,27 @@ namespace ClearKilovat.Services
 
         public List<Account> GetAccounts() => _context.Accounts.ToList();
         public List<Company> GetCompanies() => _context.Companies.ToList();
+        public List<Feedback> GetFeedbacks() => _context.Feedbacks.ToList();
+
+        public async Task InsertFeedback(Feedback newFeedback)
+        {
+            try
+            {
+                _context.Feedbacks.Add(newFeedback);
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Не удалось добавить обращение в базу данных. {ex.Message}");
+            }
+        }
 
         public async Task InsertCompanies(List<Company> companies)
         {
             try
             {
                 _context.Companies.AddRange(companies);
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
             }
             catch (Exception ex)
             {

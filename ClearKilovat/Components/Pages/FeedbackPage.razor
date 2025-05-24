@@ -1,0 +1,20 @@
+﻿@page "/feedbacks"
+
+@using ClearKilovat.Interfaces
+@using ClearKilovat.Models.Entity
+@using Radzen.Blazor
+@rendermode InteractiveServer
+@inject IDbService dbService
+
+<PageTitle>Страница обратной связи</PageTitle>
+
+
+@code{
+    private List<Feedback> feedbacks = new();
+    protected override void OnInitialized()
+    {
+        feedbacks = dbService.GetFeedbacks();
+        base.OnInitialized();
+    }
+}
+
