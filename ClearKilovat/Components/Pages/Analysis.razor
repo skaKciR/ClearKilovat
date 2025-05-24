@@ -1,0 +1,294 @@
+﻿@page "/analysis"
+@using System.Text.Json
+@using ClearKilovat.DB
+@using ClearKilovat.Models.Entity
+@using Radzen
+@using Radzen.Blazor
+@using Microsoft.EntityFrameworkCore
+@using System.Text
+@inject IHttpClientFactory HttpClientFactory
+@inject DialogService DialogService
+@inject PostgreDBContext DbContext
+@rendermode InteractiveServer
+
+<h3>Анализ коммерческих объектов</h3>
+
+<div class="rz-p-4">
+    <RadzenButton Text="Загрузить и проанализировать данные" Click="@LoadAndAnalyzeData" />
+</div>
+
+@if (isLoading)
+{
+    <p>Загрузка данных...</p>
+}
+else
+{
+    @if (results.Any())
+    {
+        <div class="rz-p-4">
+            <p><strong>Точность предсказаний:</strong></p>
+            <p>Balanced Accuracy (Ансамбль, из API): @(balancedAccuracy != null ? $"{balancedAccuracy:F2}" : "Недоступно")</p>
+            <p>Accuracy (локально, ансамбль): @(localAccuracy != null ? $"{localAccuracy:P2}" : "Недоступно")</p>
+        </div>
+
+        <RadzenDataGrid Data="@results" TItem="AnalysisResult" AllowFiltering="true" AllowSorting="true" AllowPaging="true" PageSize="10">
+            <Columns>
+                <RadzenDataGridColumn TItem="AnalysisResult" Property="AccountId" Title="ID аккаунта" Width="100px" />
+                <RadzenDataGridColumn TItem="AnalysisResult" Property="ActualIsCommercial" Title="Реальное значение" Width="120px" />
+                <RadzenDataGridColumn TItem="AnalysisResult" Property="PredictedIsCommercialRF" Title="Предсказанное (RF)" Width="120px" />
+                <RadzenDataGridColumn TItem="AnalysisResult" Property="PredictedIsCommercialXGB" Title="Предсказанное (XGB)" Width="120px" />
+                <RadzenDataGridColumn TItem="AnalysisResult" Property="PredictedIsCommercial" Title="Предсказанное (Ансамбль)" Width="120px" />
+                <RadzenDataGridColumn TItem="AnalysisResult" Property="RFProbability" Title="Вероятность (RF)" FormatString="{0:P2}" Width="120px" />
+                <RadzenDataGridColumn TItem="AnalysisResult" Property="XGBProbability" Title="Вероятность (XGB)" FormatString="{0:P2}" Width="120px" />
+                <RadzenDataGridColumn TItem="AnalysisResult" Property="EnsembleProbability" Title="Вероятность (Ансамбль)" FormatString="{0:P2}" Width="140px" />
+                <RadzenDataGridColumn TItem="AnalysisResult" Title="Ключевые признаки" Width="300px">
+                    <Template Context="result">
+                        @if (result.FeatureImportance != null && result.FeatureImportance.Any())
+                        {
+                            <div>@GetTopFeatures(result.FeatureImportance)</div>
+                        }
+                        else
+                        {
+                            <div>Нет данных</div>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    }
+    else
+    {
+        <p>Нет данных для отображения. Нажмите кнопку для загрузки.</p>
+    }
+}
+
+@code {
+    private List<AnalysisResult> results = new();
+    private bool isLoading = false;
+    private double? balancedAccuracy = null;
+    private double? localAccuracy = null;
+
+    public class AnalysisResult
+    {
+        public int AccountId { get; set; }
+        public bool ActualIsCommercial { get; set; }
+        public bool PredictedIsCommercialRF { get; set; }
+        public bool PredictedIsCommercialXGB { get; set; }
+        public bool PredictedIsCommercial { get; set; }
+        public float RFProbability { get; set; }
+        public float XGBProbability { get; set; }
+        public float EnsembleProbability { get; set; }
+        public Dictionary<string, float> FeatureImportance { get; set; } = new();
+    }
+
+    private async Task LoadAndAnalyzeData()
+    {
+        isLoading = true;
+        results.Clear();
+        balancedAccuracy = null;
+        localAccuracy = null;
+        StateHasChanged();
+
+        try
+        {
+            
+            Console.WriteLine("[Фронтенд] Загрузка данных из БД...");
+            var accounts = await DbContext.Set<Account>()
+                .Include(a => a.Consumptions)
+                .Where(a => a.Consumptions != null && a.Consumptions.Any())
+                .ToListAsync();
+
+            Console.WriteLine($"[Фронтенд] Загружено {accounts.Count} аккаунтов с данными о потреблении.");
+
+            if (!accounts.Any())
+            {
+                isLoading = false;
+                await DialogService.Alert("В базе данных нет записей с данными о потреблении.", "Ошибка");
+                StateHasChanged();
+                return;
+            }
+
+         
+            var records = new List<Dictionary<string, object>>();
+            foreach (var account in accounts)
+            {
+                if (account.Consumptions == null || !account.Consumptions.Any())
+                {
+                    Console.WriteLine($"[Фронтенд] Пропуск аккаунта {account.Id} - нет данных о потреблении");
+                    continue;
+                }
+
+                var record = new Dictionary<string, object>
+                {
+                    { "accountId", account.Id },
+                    { "isCommercial", account.IsCommercial },
+                    { "buildingType", account.BuildingType ?? "Прочий" },
+                    { "roomsCount", account.RoomsCount ?? 1 },
+                    { "residentsCount", account.ResidentsCount ?? 1 },
+                    { "totalArea", (double)(account.TotalArea ?? 100.0m) },
+                    {
+                        "consumption",
+                        account.Consumptions.ToDictionary(
+                            c => c.Month.ToString(),
+                            c => (double)c.Value
+                        )
+                    }
+                };
+                records.Add(record);
+            }
+
+            if (!records.Any())
+            {
+                isLoading = false;
+                await DialogService.Alert("Нет валидных записей для анализа.", "Ошибка");
+                StateHasChanged();
+                return;
+            }
+
+            Console.WriteLine("[Фронтенд] Пример записи: " + JsonSerializer.Serialize(records.First()));
+
+           
+            var http = HttpClientFactory.CreateClient("BatchPredictClient");
+            var requestData = new { records };
+            var json = JsonSerializer.Serialize(requestData);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            Console.WriteLine("[Фронтенд] Отправка запроса в API (/batch-predict)...");
+            var response = await http.PostAsync("batch-predict", content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"[Фронтенд] Ошибка API (/batch-predict): {error}");
+                await DialogService.Alert($"Ошибка API: {response.StatusCode}", "Ошибка");
+                isLoading = false;
+                StateHasChanged();
+                return;
+            }
+
+            
+            var responseContent = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"[Фронтенд] Ответ API (/batch-predict): {responseContent[..Math.Min(200, responseContent.Length)]}...");
+
+            try
+            {
+                var predictionResults = JsonSerializer.Deserialize<List<Dictionary<string, JsonElement>>>(responseContent);
+
+                results = predictionResults.Select(pr =>
+                {
+                    var accountId = pr["accountId"].GetInt32();
+                    var predictions = pr["predictions"];
+
+                    var actualRecord = records.FirstOrDefault(r => r["accountId"].ToString() == accountId.ToString());
+                    var actualIsCommercial = actualRecord?["isCommercial"] as bool? ?? false;
+
+                  
+                    var rfProb = predictions.TryGetProperty("rf", out var rf) ? rf.GetDouble() : 0.0;
+                    var xgbProb = predictions.TryGetProperty("xgb", out var xgb) ? xgb.GetDouble() : 0.0;
+                    var ensembleProb = predictions.TryGetProperty("ensemble", out var ensemble) ? ensemble.GetDouble() : 0.0;
+                    var isCommercialRF = predictions.TryGetProperty("isCommercial_rf", out var isCommRF) && isCommRF.GetBoolean();
+                    var isCommercialXGB = predictions.TryGetProperty("isCommercial_xgb", out var isCommXGB) && isCommXGB.GetBoolean();
+                    var isCommercial = predictions.TryGetProperty("isCommercial", out var isComm) && isComm.GetBoolean();
+
+                    
+                    var featureImportance = new Dictionary<string, float>();
+                    if (predictions.TryGetProperty("feature_importance", out var fi))
+                    {
+                        var rfFi = fi.TryGetProperty("rf", out var rfFiProp) ? rfFiProp : default;
+                        var xgbFi = fi.TryGetProperty("xgb", out var xgbFiProp) ? xgbFiProp : default;
+                        var allKeys = new List<string>();
+                        if (rfFiProp.ValueKind != JsonValueKind.Undefined)
+                            allKeys.AddRange(rfFi.EnumerateObject().Select(p => p.Name));
+                        if (xgbFiProp.ValueKind != JsonValueKind.Undefined)
+                            allKeys.AddRange(xgbFi.EnumerateObject().Select(p => p.Name));
+                        allKeys = allKeys.Distinct().ToList();
+
+                        foreach (var key in allKeys)
+                        {
+                            var rfImp = rfFi.TryGetProperty(key, out var rfImpProp) ? rfImpProp.GetDouble() : 0.0;
+                            var xgbImp = xgbFi.TryGetProperty(key, out var xgbImpProp) ? xgbImpProp.GetDouble() : 0.0;
+                            featureImportance[key] = (float)((rfImp + xgbImp) / 2);
+                        }
+                    }
+
+                    Console.WriteLine($"[Фронтенд] Запись {accountId}: RF={rfProb:F2}, XGB={xgbProb:F2}, Ensemble={ensembleProb:F2}, isCommercial_rf={isCommercialRF}, isCommercial_xgb={isCommercialXGB}, isCommercial={isCommercial}");
+
+                    return new AnalysisResult
+                        {
+                            AccountId = accountId,
+                            ActualIsCommercial = actualIsCommercial,
+                            PredictedIsCommercialRF = isCommercialRF,
+                            PredictedIsCommercialXGB = isCommercialXGB,
+                            PredictedIsCommercial = isCommercial,
+                            RFProbability = (float)rfProb,
+                            XGBProbability = (float)xgbProb,
+                            EnsembleProbability = (float)ensembleProb,
+                            FeatureImportance = featureImportance
+                        };
+                }).ToList();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Фронтенд] Ошибка парсинга ответа (/batch-predict): {ex.Message}");
+                await DialogService.Alert("Ошибка обработки ответа от API", "Ошибка");
+                isLoading = false;
+                StateHasChanged();
+                return;
+            }
+
+            
+            Console.WriteLine("[Фронтенд] Запрос метрик из API (/metrics)...");
+            var metricsResponse = await http.GetAsync("metrics");
+            if (metricsResponse.IsSuccessStatusCode)
+            {
+                var metricsContent = await metricsResponse.Content.ReadAsStringAsync();
+                Console.WriteLine($"[Фронтенд] Ответ API (/metrics): {metricsContent[..Math.Min(200, metricsContent.Length)]}...");
+
+                try
+                {
+                    var metrics = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, double>>>(metricsContent);
+                    if (metrics.TryGetValue("ensemble", out var ensembleMetrics) &&
+                        ensembleMetrics.TryGetValue("Balanced Accuracy", out var ba))
+                    {
+                        balancedAccuracy = ba;
+                        Console.WriteLine($"[Фронтенд] Balanced Accuracy (ансамбль): {balancedAccuracy:F2}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Фронтенд] Ошибка парсинга метрик: {ex.Message}");
+                }
+            }
+            else
+            {
+                var error = await metricsResponse.Content.ReadAsStringAsync();
+                Console.WriteLine($"[Фронтенд] Ошибка API (/metrics): {error}");
+            }
+
+            
+            if (results.Any())
+            {
+                var correctPredictions = results.Count(r => r.ActualIsCommercial == r.PredictedIsCommercial);
+                localAccuracy = (double)correctPredictions / results.Count;
+                Console.WriteLine($"[Фронтенд] Локальная точность (ансамбль): {localAccuracy:P2} ({correctPredictions}/{results.Count})");
+            }
+
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Фронтенд] Ошибка: {ex.Message}");
+            await DialogService.Alert($"Ошибка: {ex.Message}", "Ошибка");
+        }
+
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    private string GetTopFeatures(Dictionary<string, float> featureImportance)
+    {
+        if (featureImportance == null || !featureImportance.Any())
+            return "Нет данных";
+        var topFeatures = featureImportance.OrderByDescending(f => f.Value).Take(3).Select(f => $"{f.Key}: {f.Value:F2}");
+        return string.Join("; ", topFeatures);
+    }
+}
