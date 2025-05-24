@@ -17,6 +17,11 @@ namespace ClearKilovat.Services
 
         public List<Account> GetAccounts() => _context.Accounts.ToList();
 
+        public List<SmartMeterReading> GetSmartMetersReadings() => _context.SmartMeterReadings
+            .Include(r => r.SmartMeter)
+            .ThenInclude(m => m.Account)
+            .ToList();
+
         public async Task ImportFromFileAsync()
         {
             string filePath = Path.Combine(AppContext.BaseDirectory, "JsonDataSet", "dataset_test.json");
