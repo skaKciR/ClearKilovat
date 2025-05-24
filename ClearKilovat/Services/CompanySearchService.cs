@@ -22,7 +22,7 @@ namespace ClearKilovat.Services
             _client = client;
         }
 
-        public async Task<string> GetBuildingId(string address)
+        public async Task<IdPurposeDTO> GetBuildingId(string address)
         {
             var encodedAddress = Uri.EscapeDataString(address);
             var url = $"https://catalog.api.2gis.com/3.0/items?q={encodedAddress}&type=building&key={apiKey}";
@@ -42,8 +42,13 @@ namespace ClearKilovat.Services
             {
                 purposeName = "Гостевой дом";
             }
+            IdPurposeDTO result = new()
+            {
+                Id = id?.Split('_')[0] ?? string.Empty,
+                PurposeName = purposeName ?? string.Empty
+            };
 
-            return id?.Split('_')[0] ?? string.Empty;
+            return result;
         }
 
         public async Task<List<Company>> GetCompaniesInBuilding(string buildingId)

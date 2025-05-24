@@ -6,11 +6,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ClearKilovat.Services
 {
-    public class JsonToPostgreLoader : IJsonToPostgreLoader
+    public class DbService : IDbService
     {
         private readonly PostgreDBContext _context;
 
-        public JsonToPostgreLoader(PostgreDBContext context)
+        public DbService(PostgreDBContext context)
         {
             _context = context;
         }

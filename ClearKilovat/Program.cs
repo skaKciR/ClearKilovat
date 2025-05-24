@@ -45,7 +45,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddRadzenComponents();
 builder.Services.AddHttpClient<ICompanySearchService, CompanySearchService>();
 
-builder.Services.AddScoped<IJsonToPostgreLoader, JsonToPostgreLoader>();
+builder.Services.AddScoped<IDbService, DbService>();
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())

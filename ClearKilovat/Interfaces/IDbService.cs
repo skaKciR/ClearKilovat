@@ -2,7 +2,7 @@
 
 namespace ClearKilovat.Interfaces
 {
-    public interface IJsonToPostgreLoader
+    public interface IDbService
     {
         public Task ImportFromFileAsync();
         public List<Account> GetAccounts();
