@@ -6,66 +6,65 @@
 
 <h3 style="margin-bottom:1rem; color: #2a5d2a;">Список умных счётчиков (Тестовые данные)</h3>
 
-<RadzenDataGrid Data="@Readings" TItem="SmartMeterReading" AllowFiltering="true"
+
+<RadzenDataGrid Data="@Readings" TItem="SmartMeterReading"
+                RowClick="@OnRowClick"
                 PageSize="10"
-                AllowPaging="true"
-                FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive">
+                AllowPaging="true">
     <Columns>
         <RadzenDataGridColumn TItem="SmartMeterReading" Property="Id" Title="ID" />
         <RadzenDataGridColumn TItem="SmartMeterReading" Property="SmartMeterId" Title="Smart Meter ID" />
         <RadzenDataGridColumn TItem="SmartMeterReading" Title="Timestamp">
             <Template Context="r">
-                @r.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")
+                @r.Timestamp.ToString("yyyy-MM-dd HH:mm")
             </Template>
         </RadzenDataGridColumn>
         <RadzenDataGridColumn TItem="SmartMeterReading" Property="ConsumptionKwh" Title="Consumption (kWh)" />
     </Columns>
 </RadzenDataGrid>
 
-<RadzenChart Style="margin-top:40px; height:500px;">
-    @foreach (var group in Readings.GroupBy(r => r.SmartMeterId))
-    {
-        <RadzenLineSeries Data="@group.OrderBy(r => r.Timestamp).ToList()"
+
+@if (SelectedMeterReadings.Any())
+{
+    <h4 style="margin-top:30px; color:#2a5d2a;">График по счётчику ID: @SelectedMeterId</h4>
+
+    <RadzenChart Style="height:450px;">
+        <RadzenLineSeries Data="@SelectedMeterReadings"
                           CategoryProperty="Timestamp"
                           ValueProperty="ConsumptionKwh"
-                          Title=@($"Счётчик ID: {group.Key}") />
-    }
+                          Title="Потребление" />
 
-    @if (RegressionPoints.Any())
-    {
         <RadzenLineSeries Data="@RegressionPoints"
                           CategoryProperty="Timestamp"
                           ValueProperty="ConsumptionKwh"
                           Title="Линейная регрессия"
-                          LineType="LineType.Solid"
                           StrokeWidth="3"
                           Stroke="gray" />
-    }
 
-    <RadzenCategoryAxis FormatString="{0:HH:mm}" />
-    <RadzenValueAxis />
-</RadzenChart>
+        <RadzenCategoryAxis FormatString="{0:HH:mm}" />
+        <RadzenValueAxis />
+    </RadzenChart>
+}
+
 
 
 @code {
     private List<SmartMeterReading> Readings { get; set; } = new();
+    private List<SmartMeterReading> SelectedMeterReadings { get; set; } = new();
     private List<SmartMeterReading> RegressionPoints { get; set; } = new();
+    private int? SelectedMeterId { get; set; }
 
-    protected override void OnInitialized()
-    {
-        GenerateTestData();
-        CalculateLinearRegression();
-    }
+    
 
     private void GenerateTestData()
     {
         var random = new Random();
-        var baseTime = DateTime.UtcNow.Date.AddDays(-1); // вчера
+        var baseTime = DateTime.UtcNow.Date.AddDays(-1);
         int id = 1;
 
-        for (int hour = 0; hour < 24; hour++) // 24 часа
+        for (int hour = 0; hour < 24; hour++)
         {
-            for (int meterId = 1; meterId <= 5; meterId++) // 5 счётчиков
+            for (int meterId = 1; meterId <= 5; meterId++)
             {
                 Readings.Add(new SmartMeterReading
                 {
@@ -77,6 +76,58 @@
             }
         }
     }
+
+    private void OnRowClick(DataGridRowMouseEventArgs<SmartMeterReading> args)
+    {
+        SelectedMeterId = args.Data.SmartMeterId;
+        SelectedMeterReadings = Readings
+            .Where(r => r.SmartMeterId == SelectedMeterId)
+            .OrderBy(r => r.Timestamp)
+            .ToList();
+
+        CalculateRegression(SelectedMeterReadings);
+    }
+
+    private void CalculateRegression(List<SmartMeterReading> input)
+    {
+        RegressionPoints.Clear();
+
+        if (input.Count < 2)
+            return;
+
+        var timestamps = input.Select(r => r.Timestamp.Subtract(input[0].Timestamp).TotalHours).ToArray();
+        var values = input.Select(r => (double)r.ConsumptionKwh).ToArray();
+
+        double xAvg = timestamps.Average();
+        double yAvg = values.Average();
+
+        double numerator = 0;
+        double denominator = 0;
+
+        for (int i = 0; i < timestamps.Length; i++)
+        {
+            numerator += (timestamps[i] - xAvg) * (values[i] - yAvg);
+            denominator += Math.Pow(timestamps[i] - xAvg, 2);
+        }
+
+        double slope = numerator / denominator;
+        double intercept = yAvg - slope * xAvg;
+
+        RegressionPoints = input.Select((r, i) => new SmartMeterReading
+        {
+            Timestamp = r.Timestamp,
+            ConsumptionKwh = (decimal)(slope * timestamps[i] + intercept)
+        }).ToList();
+    }
+   
+
+    protected override void OnInitialized()
+    {
+        GenerateTestData();
+        CalculateLinearRegression();
+    }
+
+   
     private void CalculateLinearRegression()
     {
         if (!Readings.Any()) return;
