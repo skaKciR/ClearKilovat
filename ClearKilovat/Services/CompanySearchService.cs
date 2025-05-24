@@ -1,7 +1,7 @@
 ﻿using ClearKilovat.Interfaces;
 using ClearKilovat.Models.Parser;
 using Newtonsoft.Json.Linq;
-using static ClearKilovat.Components.Pages.Home;
+
 
 namespace ClearKilovat.Services
 {
