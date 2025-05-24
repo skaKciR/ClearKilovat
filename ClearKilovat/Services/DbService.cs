@@ -15,7 +15,7 @@ namespace ClearKilovat.Services
             _context = context;
         }
 
-        public List<Account> GetAccounts() => _context.Accounts.ToList();
+        public List<Account> GetAccounts() => _context.Accounts.Include(x=>x.ParserAnalytics).Include(x=>x.NnResult).ToList();
         public List<Company> GetCompanies() => _context.Companies.ToList();
         public List<Feedback> GetFeedbacks() => _context.Feedbacks.ToList();
 
@@ -69,7 +69,6 @@ namespace ClearKilovat.Services
                 var account = new Account
                 {
                     Id = raw.accountId,
-                    IsCommercial = raw.isCommercial,
                     Address = raw.address,
                     BuildingType = raw.buildingType,
                     RoomsCount = raw.roomsCount,
