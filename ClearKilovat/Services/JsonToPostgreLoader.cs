@@ -15,6 +15,8 @@ namespace ClearKilovat.Services
             _context = context;
         }
 
+        public List<Account> GetAccounts() => _context.Accounts.ToList();
+
         public async Task ImportFromFileAsync()
         {
             string filePath = Path.Combine(AppContext.BaseDirectory, "JsonDataSet", "dataset_test.json");

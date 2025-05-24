@@ -18,6 +18,7 @@ builder.Services.AddDbContext<PostgreDBContext>(options =>
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddRadzenComponents();
+builder.Services.AddHttpClient<ICompanySearchService, CompanySearchService>();
 
 builder.Services.AddScoped<IJsonToPostgreLoader, JsonToPostgreLoader>();
 var app = builder.Build();

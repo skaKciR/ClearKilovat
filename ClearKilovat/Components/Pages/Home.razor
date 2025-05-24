@@ -1,14 +1,128 @@
 ﻿@page "/"
-@using Interfaces
+@using ClearKilovat.Interfaces
+@using ClearKilovat.Models.Parser
 @rendermode InteractiveServer
+@inject ICompanySearchService companySearchService
 @inject IJsonToPostgreLoader parser
 
+<div class="container">
+    <h1>Компании в здании</h1>
 
-<RadzenButton Click="ParseJsonToPostgre">Заполнить базу</RadzenButton>
+    <div class="form-group">
+        <label for="addressInput">Адрес:</label>
+        <input id="addressInput"
+               class="form-control"
+               @bind="address"
+               placeholder="Введите адрес, например: Москва Доватора, 6/6 к8" />
+    </div>
 
+    <button class="btn btn-primary mt-2"
+            @onclick="ParseAddress"
+            disabled="@isLoading">
+        @if (isLoading)
+        {
+            <span>Загрузка...</span>
+        }
+        else
+        {
+            <span>Найти компании</span>
+        }
+    </button>
 
-@code{
-    public void ParseJsonToPostgre(){
-        parser.ImportFromFileAsync();
+    <div class="mt-3">
+        @if (isLoading)
+        {
+            <div class="alert alert-info">
+                <p>Загрузка данных... @progressMessage</p>
+            </div>
+        }
+        else if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-info">
+                <p>@errorMessage</p>
+            </div>
+        }
+        else
+        {
+            @if (!string.IsNullOrEmpty(purposeName) && IsCommercialBuilding())
+            {
+                <div class="alert alert-success">
+                    <p>Это коммерческое здание: @purposeName</p>
+                </div>
+            }
+            @if (companies.Any())
+            {
+                <h3>Компании в здании по адресу: @address</h3>
+                <div class="list-group">
+                    @foreach (var company in companies)
+                    {
+                        <div class="list-group-item">
+                            <h5>@company.Name</h5>
+                            <p>Адрес: @company.Address</p>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-warning">
+                    <p>Компании не найдены</p>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private string address = "Москва Доватора, 6/6 к8";
+    private string buildingId = string.Empty;
+    private string purposeName = string.Empty;
+    private List<Company> companies = new List<Company>();
+    private bool isLoading = false;
+    private string errorMessage = string.Empty;
+    private string progressMessage = string.Empty;
+
+    private async Task ParseAddress()
+    {
+        await GetCompanies();
+    }
+
+    private async Task GetCompanies()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = string.Empty;
+            progressMessage = string.Empty;
+            companies.Clear();
+            purposeName = string.Empty;
+
+            buildingId = await companySearchService.GetBuildingId(address);
+            if (string.IsNullOrEmpty(buildingId))
+            {
+                errorMessage = "Не удалось найти здание по указанному адресу";
+                return;
+            }
+
+            companies = await companySearchService.GetCompaniesInBuilding(buildingId);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+        {
+            errorMessage = "Превышен лимит запросов к API 2GIS. Попробуйте позже.";
+        }   
+        catch (Exception ex)
+        {
+            errorMessage = $"Ошибка: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private bool IsCommercialBuilding()
+    {
+        return companySearchService.IsCommercialBuilding(purposeName);
     }
 }
