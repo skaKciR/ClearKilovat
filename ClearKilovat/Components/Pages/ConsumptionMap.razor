@@ -13,7 +13,8 @@
     <div id="map" class="map"></div>
 </div>
 
-<script src="https://api-maps.yandex.ru/2.1/?apikey=f2099483-86bd-420f-aea6-5df434b970f5&lang=ru_RU" type="text/javascript"></script>
+<script src="https://api-maps.yandex.ru/2.1/?apikey=9f11c9e9-ceda-49f4-9110-b955e289
+4c50&lang=ru_RU" type="text/javascript"></script>
 <script>
     ymaps.ready(init);
     function init() {
@@ -24,10 +25,9 @@
             searchControlProvider: 'yandex#search'
         });
 
-        // Функция для добавления маркеров из переданных данных
+  
         window.addMarkers = function(accounts) {
             accounts.forEach(function(account) {
-                // Геокодирование адреса
                 ymaps.geocode(account.address, { results: 1 }).then(function(res) {
                     var firstGeoObject = res.geoObjects.get(0);
                     if (firstGeoObject) {
