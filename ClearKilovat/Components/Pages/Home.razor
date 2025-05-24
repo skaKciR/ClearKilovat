@@ -6,9 +6,9 @@
 @inject IDbService dbService
 
 <PageTitle>Список потребителей</PageTitle>
-<RadzenDataGrid Data="@clients" TItem="Account" AllowSorting="true" AllowFiltering="true" AllowPaging="true" PageSize="13" Style="border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: linear-gradient(145deg, #ffffff, #f8f9fa);">
+<RadzenDataGrid Data="@_clients" AllowColumnReorder="true" AllowColumnResize="true" TItem="Account" AllowSorting="true" AllowFiltering="true" AllowPaging="true" PageSize="13" Style="border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: linear-gradient(145deg, #ffffff, #f8f9fa);">
     <Columns>
-        <RadzenDataGridColumn TItem="Account" Property="Id" Title="ID" Width="80px">
+        <RadzenDataGridColumn TItem="Account" Property="Id" Title="ID" Width="40px">
             <HeaderTemplate>
                 <i class="fas fa-id-card fa-sm" style="color:#34495e; margin-right: 5px;"></i>ID
             </HeaderTemplate>
@@ -20,7 +20,7 @@
                 </RadzenLink>
             </Template>
         </RadzenDataGridColumn>
-        <RadzenDataGridColumn TItem="Account" Property="Address" Title="Адрес" Width="200px">
+        <RadzenDataGridColumn TItem="Account" Property="Address" Title="Адрес" Width="100px">
             <HeaderTemplate>
                 <i class="fas fa-home fa-sm" style="color:#34495e; margin-right: 5px;"></i>Адрес
             </HeaderTemplate>
@@ -30,7 +30,7 @@
                 </RadzenText>
             </Template>
         </RadzenDataGridColumn>
-        <RadzenDataGridColumn TItem="Account" Property="BuildingType" Title="Тип здания" Width="150px">
+        <RadzenDataGridColumn TItem="Account" Property="BuildingType" Title="Тип здания" Width="70px">
             <HeaderTemplate>
                 <i class="fas fa-city fa-sm" style="color:#34495e; margin-right: 5px;"></i>Тип здания
             </HeaderTemplate>
@@ -40,14 +40,20 @@
                 </RadzenText>
             </Template>
         </RadzenDataGridColumn>
-        <RadzenDataGridColumn TItem="Account" Property="@nameof(Account.ParserAnalytics.IsViolator)" Title="Оценка парсера" Width="120px">
+        <RadzenDataGridColumn TItem="Account"
+                              Property="@nameof(Account.ParserAnalytics.IsViolator)"
+                              Title="Оценка парсера" Width="120px">
             <HeaderTemplate>
-                <i class="fas fa-door-open fa-sm" style="color:#34495e; margin-right: 5px;"></i>Оценка парсера
+                <i class="fas fa-door-open fa-sm" style="color:#34495e; margin-right: 5px;"></i>
+                Оценка парсера
             </HeaderTemplate>
+
             <Template Context="data">
-                <RadzenText TextStyle="TextStyle.Body1" Style="color:#2c3e50;">
-                    @(data?.ParserAnalytics?.IsViolator == true ? "Выявлено чрезвычайное потребление":"Умеренное потребление")
-                </RadzenText>
+                <span class="@(data?.ParserAnalytics?.IsViolator == true ? "prob-low" : data?.ParserAnalytics?.IsViolator == false ? "prob-high" : "")">
+                    @(data?.ParserAnalytics?.IsViolator == true
+                        ? "Коммерческое" : data?.ParserAnalytics?.IsViolator == false ? "Некоммерческое"
+                        : null)
+                </span>
             </Template>
         </RadzenDataGridColumn>
         <RadzenDataGridColumn TItem="Account" Property="@nameof(Account.ParserAnalytics.DescriptionReason)" Title="Выводы парсера" Width="120px">
@@ -60,27 +66,35 @@
                 </RadzenText>
             </Template>
         </RadzenDataGridColumn>
-        <RadzenDataGridColumn TItem="Account" Property="@nameof(Account.NnResult.IsViolator)" Title="Результат ИИ" Width="120px">
+        <RadzenDataGridColumn TItem="Account"
+                              Property="@nameof(Account.NnResult.IsViolator)"
+                              Title="Результат ИИ" Width="150px">
             <HeaderTemplate>
-                <i class="fas fa-ruler fa-sm" style="color:#34495e; margin-right: 5px;"></i>Результат ИИ
+                <i class="fas fa-ruler fa-sm" style="color:#34495e; margin-right: 5px;"></i>
+                Результат ML
             </HeaderTemplate>
+
             <Template Context="data">
-                <RadzenText TextStyle="TextStyle.Body1" Style="color:#2c3e50;">
-                    @(data.NnResult?.IsViolator == true ? "Выявлено чрезвычайное потребление" : "Умеренное потребление")
-                </RadzenText>
+                @{
+                    var prob = ParseProbability(data.NnResult?.DescriptionReason);
+                    var cls = GetCssClass(prob);
+                    var lbl = GetLabel(prob);
+                }
+                <span class="@cls">@lbl</span>
             </Template>
         </RadzenDataGridColumn>
 
-        @* <RadzenDataGridColumn TItem="Account" Property="@nameof(Account.NnResult.DescriptionReason)" Title="Выводы ИИ" Width="120px">
+
+        <RadzenDataGridColumn TItem="Account" Property="@nameof(Account.NnResult.DescriptionReason)" Title="Выводы ML" Width="150px">
             <HeaderTemplate>
-                <i class="fas fa-users fa-sm" style="color:#34495e; margin-right: 5px;"></i>Выводы ИИ
+                <i class="fas fa-users fa-sm" style="color:#34495e; margin-right: 5px;"></i>Выводы ML
             </HeaderTemplate>
             <Template Context="data">
                 <RadzenText TextStyle="TextStyle.Body1" Style="color:#2c3e50;">
                     @data.NnResult?.DescriptionReason
                 </RadzenText>
             </Template>
-        </RadzenDataGridColumn> *@
+        </RadzenDataGridColumn>
     </Columns>
     <EmptyTemplate>
         <RadzenText TextStyle="TextStyle.Body1" Style="color:#34495e; padding: 20px; text-align: center;">
@@ -89,15 +103,86 @@
     </EmptyTemplate>
 </RadzenDataGrid>
 
-@code {
-    private List<Account> clients = new();
+@code
+{
+    private List<Account> _clients = new();
+
     protected override Task OnInitializedAsync()
     {
-        clients = dbService.GetAccounts();
+        var clients = dbService.GetAccounts();
+        _clients = clients
+            .Where(x => x.ParserAnalytics?.IsViolator == true || x.NnResult?.IsViolator == true)
+            .ToList();
         return base.OnInitializedAsync();
     }
+
+    private static double? ParseProbability(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return null;
+
+        var m = System.Text.RegularExpressions.Regex.Match(text, @"([\d\.,]+)\s*%");
+        if (!m.Success) return null;
+
+        var num = m.Groups[1].Value.Replace(',', '.');
+
+        return double.TryParse(num,
+                               System.Globalization.NumberStyles.Any,
+                               System.Globalization.CultureInfo.InvariantCulture,
+                               out var p)
+               ? p
+               : null;
+    }
+
+    private static string GetCssClass(double? p) =>
+        p is null ? "prob-unknown"
+        : p > 60 ? "prob-low"
+        : p > 50 ? "prob-medium"
+        : "prob-high";
+
+    private static string GetLabel(double? p) =>
+        p is null ? "Н/д"
+        : p > 60 ? "Коммерческое"
+        : p > 50 ? "Подозрение"
+        : "Некоммерческое";
 }
 <style>
+
+.prob-high   {
+    background-color: #d4edda;
+    color: #155724;
+    border-radius:4px;
+    padding:4px 6px;
+    display:inline-block;
+}
+
+.prob-medium {
+    background-color:#fff3cd;
+    color:#856404;
+    border-radius:4px;
+    padding:4px 6px;
+    display:inline-block;
+}
+
+.prob-low    {
+    background-color: #f8d7da;
+    color: #721c24;
+    border-radius:4px;
+    padding:4px 6px;
+    display:inline-block;
+}
+
+.prob-unknown{
+    background-color:#e2e3e5;
+    color:#383d41;
+    border-radius:4px;
+    padding:4px 6px;
+    display:inline-block;
+}
+
+
+
+
     .rz-data-grid {
         font-family: Arial, sans-serif;
         color: #333333;
@@ -158,5 +243,4 @@
         }
 </style>
 
-<!-- Add Font Awesome CDN -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
