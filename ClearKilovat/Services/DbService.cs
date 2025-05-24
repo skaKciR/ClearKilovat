@@ -16,6 +16,7 @@ namespace ClearKilovat.Services
         }
 
         public List<Account> GetAccounts() => _context.Accounts.ToList();
+        public async Task<List<Account>> GetAccountErrors() => await _context.Accounts.ToListAsync();
 
         public List<SmartMeterReading> GetSmartMetersReadings() => _context.SmartMeterReadings
             .Include(r => r.SmartMeter)
