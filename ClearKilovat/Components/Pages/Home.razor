@@ -44,7 +44,7 @@
                               Property="@nameof(Account.ParserAnalytics.IsViolator)"
                               Title="Оценка парсера" Width="120px">
             <HeaderTemplate>
-                <i class="fas fa-door-open fa-sm" style="color:#34495e; margin-right: 5px;"></i>
+                <i class="fas fa-line-chart  fa-sm" style="color:#34495e; margin-right: 5px;"></i>
                 Оценка парсера
             </HeaderTemplate>
 
@@ -58,7 +58,7 @@
         </RadzenDataGridColumn>
         <RadzenDataGridColumn TItem="Account" Property="@nameof(Account.ParserAnalytics.DescriptionReason)" Title="Выводы парсера" Width="120px">
             <HeaderTemplate>
-                <i class="fas fa-users fa-sm" style="color:#34495e; margin-right: 5px;"></i>Выводы парсера
+                <i class="fas fa-area-chart  fa-sm" style="color:#34495e; margin-right: 5px;"></i>Выводы парсера
             </HeaderTemplate>
             <Template Context="data">
                 <RadzenText TextStyle="TextStyle.Body1" Style="color:#2c3e50;">
@@ -70,7 +70,7 @@
                               Property="@nameof(Account.NnResult.IsViolator)"
                               Title="Результат ИИ" Width="150px">
             <HeaderTemplate>
-                <i class="fas fa-ruler fa-sm" style="color:#34495e; margin-right: 5px;"></i>
+                <i class="fas fa-line-chart fa-sm" style="color:#34495e; margin-right: 5px;"></i>
                 Результат ML
             </HeaderTemplate>
 
@@ -87,7 +87,7 @@
 
         <RadzenDataGridColumn TItem="Account" Property="@nameof(Account.NnResult.DescriptionReason)" Title="Выводы ML" Width="150px">
             <HeaderTemplate>
-                <i class="fas fa-users fa-sm" style="color:#34495e; margin-right: 5px;"></i>Выводы ML
+                <i class="fas fa-area-chart fa-sm" style="color:#34495e; margin-right: 5px;"></i>Выводы ML
             </HeaderTemplate>
             <Template Context="data">
                 <RadzenText TextStyle="TextStyle.Body1" Style="color:#2c3e50;">

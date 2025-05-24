@@ -1,42 +1,46 @@
-﻿ymaps.ready(function () {
-    var myMap = new ymaps.Map("map", {
-        center: [45.0448, 38.976],
-        zoom: 10
-    }, {
-        searchControlProvider: 'yandex#search'
-    });
+﻿window.mapHelper = (function () {
+    let myMap;
 
-    // Функция для добавления маркеров из переданных данных
-    window.addMarkers = function (accounts, dotNetReference) {
-        accounts.forEach(function (account) {
-            // Геокодирование адреса
-            ymaps.geocode(account.address, { results: 1 }).then(function (res) {
-                var firstGeoObject = res.geoObjects.get(0);
-                if (firstGeoObject) {
-                    var coords = firstGeoObject.geometry.getCoordinates();
-                    var placemark = new ymaps.Placemark(coords, {
-                        hintContent: account.address,
-                        balloonContent: `<strong>${account.address}</strong><br>Потребление: ${account.consumption || 'Нет данных'} кВт`
+    return {
+        initMap: function (containerId, spinnerId, accounts) {
+            
+            if (myMap) {
+                myMap.destroy();
+            }
+
+            document.getElementById(spinnerId).style.display = 'block';
+
+            myMap = new ymaps.Map(containerId, {
+                center: [45.0448, 38.976],
+                zoom: 10
+            });
+
+            accounts.forEach(acc => {
+                ymaps.geocode(acc.address, { results: 1 }).then(res => {
+                    const obj = res.geoObjects.get(0);
+                    if (!obj) return;
+
+                    const coords = obj.geometry.getCoordinates();
+                    const placemark = new ymaps.Placemark(coords, {
+                        hintContent: acc.address,
+                        balloonContent: `<strong>${acc.address}</strong><br>Потребление: ${acc.consumption} кВт`
                     }, {
                         preset: 'islands#blueHomeIcon',
-                        iconColor: '#0095b6'
+                        iconColor: '#0095b6',
+                        cursor: 'pointer'          
                     });
 
-                    // Добавление события клика для вызова C# метода
-                    placemark.events.add('click', function () {
-                        dotNetReference.invokeMethodAsync('NavigateToClientCard', account.id);
+                    placemark.events.add('click', () => {
+                        window.location.href = `/client-card/${acc.id}`;
                     });
 
                     myMap.geoObjects.add(placemark);
-                } else {
-                    console.warn(`Не удалось геокодировать адрес: ${account.address}`);
-                }
-            }, function (err) {
-                console.error(`Ошибка геокодирования для адреса ${account.address}:`, err);
+                });
             });
-        });
 
-        // Скрыть спиннер после загрузки
-        document.getElementById('spinner').style.display = 'none';
+            myMap.events.once('idle', () => {
+                document.getElementById(spinnerId).style.display = 'none';
+            });
+        }
     };
-});
+})();

@@ -1,8 +1,8 @@
 ﻿@page "/map"
 @using Microsoft.JSInterop
-@using Models.Entity
-@using Interfaces
-@inject IJSRuntime JSRuntime
+@using ClearKilovat.Models.Entity
+@using ClearKilovat.Interfaces
+@inject IJSRuntime JS
 @inject IDbService dbService
 @rendermode InteractiveServer
 
@@ -13,89 +13,53 @@
     <div id="map" class="map"></div>
 </div>
 
-<script src="https://api-maps.yandex.ru/2.1/?apikey=9f11c9e9-ceda-49f4-9110-b955e289
-4c50&lang=ru_RU" type="text/javascript"></script>
-<script>
-    ymaps.ready(init);
-    function init() {
-        var myMap = new ymaps.Map("map", {
-            center: [45.0448, 38.976],
-            zoom: 10
-        }, {
-            searchControlProvider: 'yandex#search'
-        });
-
-  
-        window.addMarkers = function(accounts) {
-            accounts.forEach(function(account) {
-                ymaps.geocode(account.address, { results: 1 }).then(function(res) {
-                    var firstGeoObject = res.geoObjects.get(0);
-                    if (firstGeoObject) {
-                        var coords = firstGeoObject.geometry.getCoordinates();
-                        var placemark = new ymaps.Placemark(coords, {
-                            hintContent: account.address,
-                            balloonContent: `<strong>${account.address}</strong><br>Потребление: ${account.consumption || 'Нет данных'} кВт`
-                        }, {
-                            preset: 'islands#blueHomeIcon',
-                            iconColor: '#0095b6'
-                        });
-                        myMap.geoObjects.add(placemark);
-                    }
-                });
-            });
-
-            // Скрыть спиннер после загрузки
-            document.getElementById('spinner').style.display = 'none';
-        };
-    }
-</script>
-
-
 <style>
     .map-container {
-        position: relative;
-        width: 100%;
-        height: 600px;
+    position: relative;
+    width: 100%;
+    height: 600px;
     }
 
     .map {
-        width: 100%;
-        height: 100%;
+    width: 100%;
+    height: 100%;
     }
 
     .spinner {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid #3498db;
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        animation: spin 1s linear infinite;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
     }
-
-    
 </style>
+
 @code {
-    private List<Account> clients = new();
+    private bool _initialized;
+    private List<Account> _filterClients = new();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (!firstRender) return;
+
+        var clients = await dbService.GetAccountErrors();
+
+        _filterClients = clients.Where(x => x.NnResult?.IsViolator == true || x.ParserAnalytics?.IsViolator == true).ToList();
+
+        var dto = _filterClients.Select(c => new
         {
-            clients = await dbService.GetAccountErrors();
+            id = c.Id,
+            address = c.Address,
+            consumption = c.Consumptions?.Sum(x => x.Value) ?? 0
+        });
 
-            // Подготовка данных для JavaScript
-            var accounts = clients.Select(c => new
-            {
-                address = c.Address,
-                consumption = c.Consumptions?.Sum(co => co.Value) ?? 0 
-            }).ToList();
+        await JS.InvokeVoidAsync("mapHelper.initMap", "map", "spinner", dto);
 
-            // Передача данных в JavaScript
-            await JSRuntime.InvokeVoidAsync("addMarkers", accounts);
-        }
+        _initialized = true;
     }
 }
