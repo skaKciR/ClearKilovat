@@ -32,6 +32,8 @@ namespace ClearKilovat.Models.Entity
         public List<Consumption> Consumptions { get; set; }
         public ParserAnalytics? ParserAnalytics { get; set; }
         public NnResult? NnResult { get; set; }
+        public List<SmartMeterReading>? SmartMeterReading { get; set; }
+
 
     }
 }

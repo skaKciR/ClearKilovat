@@ -6,5 +6,7 @@ namespace ClearKilovat.Interfaces
     {
         public Task ImportFromFileAsync();
         public List<Account> GetAccounts();
+        public List<SmartMeterReading> GetSmartMetersReadings();
+
     }
 }

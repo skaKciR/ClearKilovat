@@ -7,6 +7,10 @@ namespace ClearKilovat.DB
     {
         public DbSet<Account> Accounts { get; set; }
         public DbSet<Consumption> Consumptions { get; set; }
+        public DbSet<SmartMeter> SmartMeters { get; set; }
+        public DbSet<SmartMeterReading> SmartMeterReadings { get; set; }
+
+
         public PostgreDBContext(DbContextOptions<PostgreDBContext> options) : base(options)
         {
             
