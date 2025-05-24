@@ -34,13 +34,17 @@ else
         <RadzenDataGrid Data="@results" TItem="AnalysisResult" AllowFiltering="true" AllowSorting="true" AllowPaging="true" PageSize="10">
             <Columns>
                 <RadzenDataGridColumn TItem="AnalysisResult" Property="AccountId" Title="ID аккаунта" Width="100px" />
-                <RadzenDataGridColumn TItem="AnalysisResult" Property="ActualIsCommercial" Title="Реальное значение" Width="120px" />
-                <RadzenDataGridColumn TItem="AnalysisResult" Property="PredictedIsCommercialRF" Title="Предсказанное (RF)" Width="120px" />
-                <RadzenDataGridColumn TItem="AnalysisResult" Property="PredictedIsCommercialXGB" Title="Предсказанное (XGB)" Width="120px" />
-                <RadzenDataGridColumn TItem="AnalysisResult" Property="PredictedIsCommercial" Title="Предсказанное (Ансамбль)" Width="120px" />
-                <RadzenDataGridColumn TItem="AnalysisResult" Property="RFProbability" Title="Вероятность (RF)" FormatString="{0:P2}" Width="120px" />
-                <RadzenDataGridColumn TItem="AnalysisResult" Property="XGBProbability" Title="Вероятность (XGB)" FormatString="{0:P2}" Width="120px" />
-                <RadzenDataGridColumn TItem="AnalysisResult" Property="EnsembleProbability" Title="Вероятность (Ансамбль)" FormatString="{0:P2}" Width="140px" />
+                <RadzenDataGridColumn TItem="AnalysisResult" Property="ActualIsCommercial" Title="Реальное значение" Width="120px">
+                    <Template Context="result">
+                        @(result.ActualIsCommercial ? "Да" : "Нет")
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="AnalysisResult" Property="Probability" Title="Вероятность" FormatString="{0:P2}" Width="120px" />
+                <RadzenDataGridColumn TItem="AnalysisResult" Property="PredictedIsCommercial" Title="Предсказанное" Width="120px">
+                    <Template Context="result">
+                        @(result.PredictedIsCommercial ? "Да" : "Нет")
+                    </Template>
+                </RadzenDataGridColumn>
                 <RadzenDataGridColumn TItem="AnalysisResult" Title="Ключевые признаки" Width="300px">
                     <Template Context="result">
                         @if (result.FeatureImportance != null && result.FeatureImportance.Any())
@@ -72,12 +76,8 @@ else
     {
         public int AccountId { get; set; }
         public bool ActualIsCommercial { get; set; }
-        public bool PredictedIsCommercialRF { get; set; }
-        public bool PredictedIsCommercialXGB { get; set; }
+        public float Probability { get; set; }
         public bool PredictedIsCommercial { get; set; }
-        public float RFProbability { get; set; }
-        public float XGBProbability { get; set; }
-        public float EnsembleProbability { get; set; }
         public Dictionary<string, float> FeatureImportance { get; set; } = new();
     }
 
@@ -91,7 +91,6 @@ else
 
         try
         {
-            
             Console.WriteLine("[Фронтенд] Загрузка данных из БД...");
             var accounts = await DbContext.Set<Account>()
                 .Include(a => a.Consumptions)
@@ -108,7 +107,6 @@ else
                 return;
             }
 
-         
             var records = new List<Dictionary<string, object>>();
             foreach (var account in accounts)
             {
@@ -147,7 +145,6 @@ else
 
             Console.WriteLine("[Фронтенд] Пример записи: " + JsonSerializer.Serialize(records.First()));
 
-           
             var http = HttpClientFactory.CreateClient("BatchPredictClient");
             var requestData = new { records };
             var json = JsonSerializer.Serialize(requestData);
@@ -166,66 +163,68 @@ else
                 return;
             }
 
-            
             var responseContent = await response.Content.ReadAsStringAsync();
             Console.WriteLine($"[Фронтенд] Ответ API (/batch-predict): {responseContent[..Math.Min(200, responseContent.Length)]}...");
 
             try
             {
                 var predictionResults = JsonSerializer.Deserialize<List<Dictionary<string, JsonElement>>>(responseContent);
-
-                results = predictionResults.Select(pr =>
+                if (predictionResults == null)
                 {
-                    var accountId = pr["accountId"].GetInt32();
-                    var predictions = pr["predictions"];
+                    Console.WriteLine("[Фронтенд] Ошибка: ответ API пустой или некорректный");
+                    await DialogService.Alert("Ошибка: пустой ответ от API", "Ошибка");
+                    isLoading = false;
+                    StateHasChanged();
+                    return;
+                }
 
-                    var actualRecord = records.FirstOrDefault(r => r["accountId"].ToString() == accountId.ToString());
-                    var actualIsCommercial = actualRecord?["isCommercial"] as bool? ?? false;
-
-                  
-                    var rfProb = predictions.TryGetProperty("rf", out var rf) ? rf.GetDouble() : 0.0;
-                    var xgbProb = predictions.TryGetProperty("xgb", out var xgb) ? xgb.GetDouble() : 0.0;
-                    var ensembleProb = predictions.TryGetProperty("ensemble", out var ensemble) ? ensemble.GetDouble() : 0.0;
-                    var isCommercialRF = predictions.TryGetProperty("isCommercial_rf", out var isCommRF) && isCommRF.GetBoolean();
-                    var isCommercialXGB = predictions.TryGetProperty("isCommercial_xgb", out var isCommXGB) && isCommXGB.GetBoolean();
-                    var isCommercial = predictions.TryGetProperty("isCommercial", out var isComm) && isComm.GetBoolean();
-
-                    
-                    var featureImportance = new Dictionary<string, float>();
-                    if (predictions.TryGetProperty("feature_importance", out var fi))
+                results = predictionResults
+                    .Where(pr => pr.TryGetValue("accountId", out var accountIdProp) && accountIdProp.GetInt32() != 0)
+                    .Select(pr =>
                     {
-                        var rfFi = fi.TryGetProperty("rf", out var rfFiProp) ? rfFiProp : default;
-                        var xgbFi = fi.TryGetProperty("xgb", out var xgbFiProp) ? xgbFiProp : default;
-                        var allKeys = new List<string>();
-                        if (rfFiProp.ValueKind != JsonValueKind.Undefined)
-                            allKeys.AddRange(rfFi.EnumerateObject().Select(p => p.Name));
-                        if (xgbFiProp.ValueKind != JsonValueKind.Undefined)
-                            allKeys.AddRange(xgbFi.EnumerateObject().Select(p => p.Name));
-                        allKeys = allKeys.Distinct().ToList();
+                        int accountId = pr["accountId"].GetInt32();
+                        var actualRecord = records.FirstOrDefault(r => Convert.ToInt32(r["accountId"]) == accountId);
+                        var actualIsCommercial = actualRecord?["isCommercial"] as bool? ?? false;
 
-                        foreach (var key in allKeys)
+                        double prob = pr.TryGetValue("probability", out var probProp) ? probProp.GetDouble() : 0.0;
+                        bool isCommercial = pr.TryGetValue("isCommercial", out var isCommProp) && isCommProp.GetBoolean();
+
+                        var featureImportance = new Dictionary<string, float>();
+                        if (pr.TryGetValue("feature_importance", out var fiProp) && fiProp.ValueKind == JsonValueKind.Object)
                         {
-                            var rfImp = rfFi.TryGetProperty(key, out var rfImpProp) ? rfImpProp.GetDouble() : 0.0;
-                            var xgbImp = xgbFi.TryGetProperty(key, out var xgbImpProp) ? xgbImpProp.GetDouble() : 0.0;
-                            featureImportance[key] = (float)((rfImp + xgbImp) / 2);
+                            var rfFi = fiProp.TryGetProperty("rf", out var rfFiProp) ? rfFiProp : default;
+                            var xgbFi = fiProp.TryGetProperty("xgb", out var xgbFiProp) ? xgbFiProp : default;
+
+                            var allKeys = new List<string>();
+                            if (rfFi.ValueKind != JsonValueKind.Undefined)
+                                allKeys.AddRange(rfFi.EnumerateObject().Select(p => p.Name));
+                            if (xgbFi.ValueKind != JsonValueKind.Undefined)
+                                allKeys.AddRange(xgbFi.EnumerateObject().Select(p => p.Name));
+                            allKeys = allKeys.Distinct().ToList();
+
+                            foreach (var key in allKeys)
+                            {
+                                double rfImp = rfFi.TryGetProperty(key, out var rfImpProp) ? rfImpProp.GetDouble() : 0.0;
+                                double xgbImp = xgbFi.TryGetProperty(key, out var xgbImpProp) ? xgbImpProp.GetDouble() : 0.0;
+                                featureImportance[key] = (float)((rfImp + xgbImp) / 2);
+                            }
                         }
-                    }
-
-                    Console.WriteLine($"[Фронтенд] Запись {accountId}: RF={rfProb:F2}, XGB={xgbProb:F2}, Ensemble={ensembleProb:F2}, isCommercial_rf={isCommercialRF}, isCommercial_xgb={isCommercialXGB}, isCommercial={isCommercial}");
-
-                    return new AnalysisResult
+                        else
                         {
-                            AccountId = accountId,
-                            ActualIsCommercial = actualIsCommercial,
-                            PredictedIsCommercialRF = isCommercialRF,
-                            PredictedIsCommercialXGB = isCommercialXGB,
-                            PredictedIsCommercial = isCommercial,
-                            RFProbability = (float)rfProb,
-                            XGBProbability = (float)xgbProb,
-                            EnsembleProbability = (float)ensembleProb,
-                            FeatureImportance = featureImportance
-                        };
-                }).ToList();
+                            Console.WriteLine($"[Фронтенд] feature_importance отсутствует для accountId {accountId}");
+                        }
+
+                        Console.WriteLine($"[Фронтенд] Запись {accountId}: Probability={prob:F2}, isCommercial={isCommercial}");
+
+                        return new AnalysisResult
+                            {
+                                AccountId = accountId,
+                                ActualIsCommercial = actualIsCommercial,
+                                Probability = (float)prob,
+                                PredictedIsCommercial = isCommercial,
+                                FeatureImportance = featureImportance
+                            };
+                    }).ToList();
             }
             catch (Exception ex)
             {
@@ -236,7 +235,6 @@ else
                 return;
             }
 
-            
             Console.WriteLine("[Фронтенд] Запрос метрик из API (/metrics)...");
             var metricsResponse = await http.GetAsync("metrics");
             if (metricsResponse.IsSuccessStatusCode)
@@ -265,14 +263,12 @@ else
                 Console.WriteLine($"[Фронтенд] Ошибка API (/metrics): {error}");
             }
 
-            
             if (results.Any())
             {
                 var correctPredictions = results.Count(r => r.ActualIsCommercial == r.PredictedIsCommercial);
                 localAccuracy = (double)correctPredictions / results.Count;
                 Console.WriteLine($"[Фронтенд] Локальная точность (ансамбль): {localAccuracy:P2} ({correctPredictions}/{results.Count})");
             }
-
         }
         catch (Exception ex)
         {
