@@ -301,7 +301,7 @@
                     AccountId = accountId,
                     DescriptionReason = prediction.TryGetValue("description_reason", out var descProp) ? descProp.GetString() ?? "Нет данных" : "Нет данных",
                     IsViolator = prediction.TryGetValue("is_violator", out var violatorProp) && violatorProp.GetBoolean(),
-                    PredictedAt = DateTime.UtcNow
+                    PredictedAt = DateTime.Now
                 };
 
             if (prediction.TryGetValue("predicted_at", out var predictedAtProp))
