@@ -16,6 +16,8 @@ namespace ClearKilovat.Services
         }
 
         public List<Account> GetAccounts() => _context.Accounts.Include(x=>x.ParserAnalytics).Include(x=>x.NnResult).ToList();
+       
+
         public List<Company> GetCompanies() => _context.Companies.ToList();
         public List<Feedback> GetFeedbacks() => _context.Feedbacks.ToList();
 
