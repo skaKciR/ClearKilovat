@@ -1,6 +1,7 @@
 ﻿@page "/analysis"
 @using System.Text.Json
 @using ClearKilovat.DB
+@using ClearKilovat.Models.Analysis
 @using ClearKilovat.Models.Entity
 @using Radzen
 @using Radzen.Blazor
@@ -116,13 +117,7 @@
     private DateTime? lastMetricsFetch = null;
     private readonly TimeSpan metricsCacheDuration = TimeSpan.FromMinutes(5);
 
-    public class AnalysisResult
-    {
-        public int AccountId { get; set; }
-        public string DescriptionReason { get; set; } = string.Empty;
-        public bool IsCommercial { get; set; }
-        public DateTime PredictedAt { get; set; }
-    }
+  
 
     protected override async Task OnInitializedAsync()
     {
@@ -245,7 +240,7 @@
             var http = HttpClientFactory.CreateClient("BatchPredictClient");
             var requestData = new { records };
             var json = JsonSerializer.Serialize(requestData);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             Console.WriteLine($"[Фронтенд] Отправка данных для аккаунта {accountId} в API (/batch-predict)...");
             var response = await http.PostAsync("batch-predict", content);
@@ -309,7 +304,7 @@
                 string predictedAtStr = predictedAtProp.GetString();
                 if (!string.IsNullOrEmpty(predictedAtStr) && DateTimeOffset.TryParse(predictedAtStr, out var dateTimeOffset))
                 {
-                    nnResult.PredictedAt = dateTimeOffset.UtcDateTime;
+                    nnResult.PredictedAt = dateTimeOffset.UtcDateTime.AddHours(+3);
                 }
                 else
                 {
