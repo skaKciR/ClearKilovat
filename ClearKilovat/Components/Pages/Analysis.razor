@@ -72,7 +72,7 @@
                             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="10px">
                                 <i class="fas fa-chart-pie fa-sm" style="color:#2ecc71;"></i>
                                 <RadzenLabel Text="Точность:" Style="font-weight:500;" />
-                                <RadzenLabel Text="@(balancedAccuracy != null ? $"{balancedAccuracy:F2}%" : "—")" />
+                                <RadzenLabel Text="@(balancedAccuracy != null ? $"{balancedAccuracy*100:F2}%" : "—")" />
                             </RadzenStack>
 
                             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="10px">
