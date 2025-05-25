@@ -69,12 +69,22 @@ namespace ClearKilovat.Services
                 companiesList.Add(new Company
                 {
                     Name = item["name"]?.ToString() ?? "Без названия",
-                    Adress = item["address_name"]?.ToString() ?? string.Empty
+                    Adress = item["address_name"]?.ToString() ?? string.Empty,
+                    PhoneNumber = GeneratePhoneNumber()
                 });
             }
 
             return companiesList;
         }
+
+        public static string GeneratePhoneNumber()
+        {
+            string[] operators = { "918", "928", "938", "961", "962" };
+            Random random = new Random();
+            string operatorCode = operators[random.Next(operators.Length)];
+            return $"+7{operatorCode}{random.Next(1000000, 9999999)}";
+        }
+
 
         public bool IsCommercialBuilding(string purposeName)
         {

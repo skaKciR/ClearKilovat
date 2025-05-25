@@ -71,6 +71,7 @@
                             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="8px" Style="padding: 5px 0;">
                                 <i class="fas fa-circle fa-xs" style="color:#2ecc71;"></i>
                                 <RadzenLabel Text="@company.Name" Style="font-size:16px; color:#2c3e50; font-weight: 400; text-transform: uppercase;" />
+                                <RadzenLabel Text="@company.PhoneNumber" Style="font-size:16px; color:#2c3e50; font-weight: 400; text-transform: uppercase;" />
                             </RadzenStack>
                         }
                     </RadzenStack>
@@ -257,10 +258,8 @@
 
     private async Task GeneratePdf()
     {
-        // Настройка лицензии QuestPDF
         QuestPDF.Settings.License = LicenseType.Community;
 
-        // Создаем PDF-документ
         var document = Document.Create(container =>
         {
             container.Page(page =>
@@ -270,7 +269,6 @@
                 page.DefaultTextStyle(x => x.FontSize(12).FontFamily(Fonts.Calibri));
                 page.Background().Background(QuestPDF.Helpers.Colors.Grey.Lighten4);
 
-                // Заголовок
                 page.Header()
                     .PaddingBottom(10)
                     .BorderBottom(1, Unit.Point)
@@ -280,29 +278,24 @@
                     .FontColor(QuestPDF.Helpers.Colors.Green.Darken2)
                     .AlignCenter();
 
-                // Контент
                 page.Content()
                     .PaddingVertical(1, Unit.Centimetre)
                     .Table(table =>
                     {
-                        // Определяем структуру таблицы: 2 столбца (метка и значение)
                         table.ColumnsDefinition(columns =>
                         {
-                            columns.ConstantColumn(180); // Фиксированная ширина для меток
-                            columns.RelativeColumn();   // Остальное пространство для значений
+                            columns.ConstantColumn(180); 
+                            columns.RelativeColumn();   
                         });
 
-                        // Стили для ячеек заголовка
                         table.Header(header =>
                         {
                             header.Cell().Background(QuestPDF.Helpers.Colors.Green.Lighten2).Padding(5).Text("Параметр").Bold().FontColor(QuestPDF.Helpers.Colors.White);
                             header.Cell().Background(QuestPDF.Helpers.Colors.Green.Lighten2).Padding(5).Text("Значение").Bold().FontColor(QuestPDF.Helpers.Colors.White);
                         });
 
-                        // Счетчик для чередования фона строк
                         int rowIndex = 0;
 
-                        // Функция для добавления строки с иконкой
                         void AddRow(string label, string value, string icon = "•")
                         {
                             var backgroundColor = rowIndex % 2 == 0 ? QuestPDF.Helpers.Colors.White : QuestPDF.Helpers.Colors.Grey.Lighten5;
@@ -328,6 +321,7 @@
 
                         AddRow("Account ID:", account.Id.ToString(), "🆔");
                         AddRow("Адрес:", account.Address, "🏠");
+                        AddRow("Номер телефона:", companies.FirstOrDefault(x => x.AccountId == account.Id)?.PhoneNumber ?? "—", "📞");
                         AddRow("Тип здания:", account.BuildingType ?? "—", "🏢");
                         AddRow("Кол-во комнат:", account.RoomsCount?.ToString() ?? "—", "🛋️");
                         AddRow("Кол-во жильцов:", account.ResidentsCount?.ToString() ?? "—", "👥");
@@ -359,7 +353,6 @@
                         }
                     });
 
-                // Футер
                 page.Footer()
     .AlignCenter()
     .Text(x =>

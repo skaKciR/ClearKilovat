@@ -19,5 +19,7 @@ namespace ClearKilovat.Models.Entity
 
         [Column("adress")]
         public string Adress { get; set; } = string.Empty;
+        [Column("phone_number")]
+        public string? PhoneNumber { get; set; } = string.Empty;
     }
 }
