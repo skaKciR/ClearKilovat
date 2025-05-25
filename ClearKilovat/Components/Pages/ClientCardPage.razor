@@ -215,7 +215,7 @@
                 var prediction = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(responseContent);
                 if (prediction != null &&
                     prediction.TryGetValue("description_reason", out var descProp) &&
-                    prediction.TryGetValue("is_violator", out var violatorProp))
+                    prediction.TryGetValue("is_commercial", out var violatorProp))
                 {
                     predictionProbability = descProp.GetString() ?? "Нет данных";
                     isPredictionCommercial = violatorProp.GetBoolean();

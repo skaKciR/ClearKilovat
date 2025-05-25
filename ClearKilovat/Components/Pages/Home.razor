@@ -143,14 +143,14 @@
 
     private static string GetCssClass(double? p) =>
         p is null ? "prob-unknown"
-        : p > 60 ? "prob-low"
-        : p > 50 ? "prob-medium"
+        : p > 50 ? "prob-low"
+        : p > 40 ? "prob-medium"
         : "prob-high";
 
     private static string GetLabel(double? p) =>
         p is null ? "Н/д"
-        : p > 60 ? "Коммерческое"
-        : p > 50 ? "Подозрение"
+        : p > 50 ? "Коммерческое"
+        : p > 40 ? "Подозрение"
         : "Некоммерческое";
 
     private async Task GeneratePdf()
